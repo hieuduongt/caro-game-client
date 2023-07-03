@@ -32,7 +32,156 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
+}
+
+.grid {
+  overflow-x: auto;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+#game {
+  border: 1px solid #ccc;
+  text-align: center;
+  margin: auto auto;
+  border-radius: 4px;
+}
+
+.cell {
+  min-width: 35px;
+  min-height: 35px;
+  width: 35px;
+  height: 35px;
+  text-align: center;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.control {
+  padding: 20px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+.text-danger {
+  color: red;
+  font-weight: bolder;
+}
+
+.chat-card {
+  max-width: 400px;
+  position: fixed;
+  bottom: 0;
+  right: 30px;
+  height: 400px;
+  width: 300px;
+  border: 1px solid #ccc;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  background-color: rgb(255, 255, 255);
+  box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
+  transition: height 1s;
+}
+
+.chat-card-closed {
+  max-width: 400px;
+  position: fixed;
+  bottom: 0;
+  right: 30px;
+  height: 38px;
+  width: 300px;
+  border: 1px solid #ccc;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  background-color: rgb(255, 255, 255);
+  box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
+  transition: height 1s;
+}
+
+.chat-card>.chat-action {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}
+
+.chat-card>.chat-content {
+  height: 320px;
+  background-color: rgba(221, 221, 221, 0.705);
+  overflow-y: auto;
+}
+
+.chat-card>.chat-header {
+  height: 40px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #ccc;
+  box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px;
+  display: flex;
+  flex-wrap: nowrap;
+  position: relative;
+}
+
+.chat-header>.chat-title {
+  font-weight: bold;
+  padding: 10px;
+}
+
+.chat-header>.chat-icon-action {
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.chat-content>.message-row {
+  min-height: 30px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+
+.message-row>.my-messages {
+  float: left;
+  background-color: #61dafb;
+  padding: 8px;
+  border-radius: 20px 20px 20px 0px;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+
+.message-row>.friend-messages {
+  float: right;
+  background-color: rgb(255, 255, 255);
+  padding: 8px;
+  border-radius: 20px 20px 0px 20px;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+
+.player-status {
+  font-weight: bold;
+  color: greenyellow;
+  text-shadow: #282c34;
+}
+
+.list-players {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
 }
