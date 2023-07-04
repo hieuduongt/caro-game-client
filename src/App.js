@@ -81,7 +81,7 @@ function App() {
     fetchListPlayers();
     prepairGrid(100, 100);
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('https://localhost:7170/api/chat')
+      .withUrl('https://caro-game-server-19011997.azurewebsites.net/api/chat')
       .build();
 
     connection.start()
