@@ -87,11 +87,11 @@ function App() {
       cancelText: 'Exit',
       onOk: () => {
         ok = true;
-        prepairGrid(100, 100);
+        prepairGrid(150, 150);
       },
       onCancel: () => {
         ok = true;
-        prepairGrid(100, 100);
+        prepairGrid(150, 150);
       },
       centered: true,
     });
@@ -162,7 +162,7 @@ function App() {
 
   useEffect(() => {
     fetchListPlayers();
-    prepairGrid(100, 100);
+    prepairGrid(150, 150);
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${PATH.prod}/api/game`)
       .build();
@@ -552,7 +552,7 @@ function App() {
       </div>
 
       <div className="control">
-        <Form
+        {/* <Form
           onFinish={submitControl}
           layout='inline'
           form={form}
@@ -584,7 +584,7 @@ function App() {
           <Form.Item>
             <Button type="primary" htmlType="submit">Submit</Button>
           </Form.Item>
-        </Form>
+        </Form> */}
       </div>
       <div className='list-players'>
         <List
