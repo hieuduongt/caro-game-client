@@ -2,9 +2,10 @@ import './App.css';
 import React, { useEffect, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Button, Form, Input, InputNumber, message, Alert, Statistic, Modal, List } from 'antd';
-import { PlaySquareOutlined, SendOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
+import { PlaySquareOutlined, SendOutlined, CaretDownOutlined, CaretUpOutlined, ExclamationCircleOutlined, SmileOutlined } from '@ant-design/icons';
 import ChatServices from './API/chatServices';
 import ConnectionServices from './API/connectionServices';
+import { PATH } from './Common/path';
 const { Countdown } = Statistic;
 
 const XIcon = () => {
@@ -27,24 +28,27 @@ const Cell = (props) => {
 }
 
 function App() {
+  const [yourName, setYourName] = useState("");
+  const [requestingOpen, setRequestingOpen] = useState(false);
   const [myConnectionId, setMyConnectionId] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(true);
   const [connection, setConnection] = useState(null);
-  const [yourProfile, setYourProfile] = useState("Bot");
   const [competitor, setCompetitor] = useState();
   const [messages, setMessages] = useState([]);
-  const [chatToggle, setChatToggle] = useState(false);
+  const [chatToggles, setChatToggles] = useState([true, true]);
   const [xGridSize, setXGridSize] = useState([]);
   const [yGridSize, setYGridSize] = useState([]);
   const [gameboard, setGameBoard] = useState([]);
   const [listPlayers, setListPlayers] = useState([]);
-  const [currentPlayer, setCurrentPlayer] = useState(0);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [turn, setTurn] = useState(0);
   const [deadline, setDeadLine] = useState(Date.now() + 60 * 1000);
   const [form] = Form.useForm();
-  const [messageForm] = Form.useForm();
   const [nameForm] = Form.useForm();
+  const [modal, contextHolder] = Modal.useModal();
 
   const prepairGrid = (x, y) => {
+    resetGrid();
     let gridX = [];
     let gridY = [];
     let board = [];
@@ -65,8 +69,77 @@ function App() {
     setGameBoard(board);
   }
 
-  const setUserName = (name) => {
-    connection.send('SetUserName', name); // Gửi userName cho API server
+  const resetGrid = () => {
+    const filledCells = document.querySelectorAll("td.cell[selected]");
+    filledCells.forEach(cell => {
+      cell.innerHTML = "";
+      cell.removeAttribute("selected");
+    })
+  }
+
+  const confirmPlayReplay = (connId, mess, conn) => {
+    let ok = false;
+    modal.confirm({
+      title: <Countdown title="Auto reset after" value={Date.now() + 30 * 1000} format="ss" />,
+      icon: <ExclamationCircleOutlined />,
+      content: mess,
+      okText: 'Replay',
+      cancelText: 'Exit',
+      onOk: () => {
+        ok = true;
+        prepairGrid(100, 100);
+      },
+      onCancel: () => {
+        ok = true;
+        prepairGrid(100, 100);
+      },
+      centered: true,
+    });
+    setTimeout(() => {
+      if (!ok) {
+        Modal.destroyAll();
+        conn.send('RejectPlay', connId);
+      }
+    }, 30000);
+  }
+
+  const confirmPlayRequesting = (connId, mess, conn) => {
+    let ok = false;
+    modal.confirm({
+      title: <Countdown title="Auto reject after" value={Date.now() + 30 * 1000} format="ss" />,
+      icon: <ExclamationCircleOutlined />,
+      content: mess,
+      okText: 'Play',
+      cancelText: 'Cancel',
+      onOk: () => {
+        setCurrentPlayer(0);
+        conn.send('AcceptPlay', connId);
+        startPlay(connId);
+        ConnectionServices.updateStatus(myConnectionId, false);
+        conn.send("SendMessageToAll", "A player is playing");
+        ok = true;
+      },
+      onCancel: () => {
+        conn.send('RejectPlay', connId);
+        ok = true;
+      },
+      centered: true,
+    });
+    setTimeout(() => {
+      if (!ok) {
+        Modal.destroyAll();
+        conn.send('RejectPlay', connId);
+      }
+    }, 30000);
+  }
+
+  const confirmRejected = (mess) => {
+    modal.info({
+      title: 'Player rejected!',
+      icon: <ExclamationCircleOutlined />,
+      content: mess,
+      okText: 'Ok'
+    });
   }
 
   const fetchListPlayers = async () => {
@@ -77,49 +150,175 @@ function App() {
     return res.data.results;
   }
 
+  const startPlay = async (connId) => {
+    const player = await ConnectionServices.getOne(connId);
+    if (player.status === 200) {
+      setCompetitor(player.data.result);
+
+    } else {
+      message.error("Cannot found your competitor!")
+    }
+  }
+
   useEffect(() => {
     fetchListPlayers();
     prepairGrid(100, 100);
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('https://caro-game-server-19011997.azurewebsites.net/api/chat')
+      .withUrl(`${PATH.local}/api/game`)
       .build();
 
     connection.start()
       .then(() => {
-        console.log('Connected to SignalR Hub');
         setConnection(connection);
         setMyConnectionId(connection.connectionId);
       })
       .catch((error) => {
         console.error(error);
       });
-    connection.on("ReceiveMessage", async (user, mess) => {
-      console.log(user, mess);
+    connection.on("AcceptedPlay", async (connId) => {
+      await ConnectionServices.updateStatus(connection.connectionId, false);
+      connection.send("SendMessageToAll", "A player is playing");
+      setRequestingOpen(false);
+      setCurrentPlayer(1);
+      setTurn(1);
+      startPlay(connId);
+      setDeadLine(Date.now() + 60 * 1000);
+    });
+    connection.on("RequestedPlay", (connId, mess) => {
+      confirmPlayRequesting(connId, mess, connection);
+    });
 
-      if (user.toLowerCase() === "new-user-login") {
-        fetchListPlayers();
+    connection.on("RejectedPlay", (connId, mess) => {
+      setRequestingOpen(false);
+      confirmRejected(mess);
+    });
+
+    connection.on("YouLose", (connId) => {
+      confirmPlayReplay(connId, "You lose!!!", connection);
+    });
+
+    connection.on("ReceiveMessage", async (connId, userName, mess) => {
+      if (connId.toLowerCase() === "new-user-login") {
+        await fetchListPlayers();
       } else {
-        const listPlayers = await fetchListPlayers();
-        setCompetitor(listPlayers.find(i => i.id == user));
-        setMessages(oldMessage => [...oldMessage, {
-          isYourMessage: false,
-          content: mess
-        }]);
+        addMessages(connId, userName, mess, false);
       }
     });
-    // Cleanup: Đóng kết nối khi component unmount
+
     return () => {
       connection.stop();
     };
   }, []);
 
+  useEffect(() => {
+    if (connection) connection.on("SwicthTurn", (connId, data) => {
+      swicthTurn(data);
+    });
+  });
+
+  const swicthTurn = (data) => {
+    setTurn(1);
+    setDeadLine(Date.now() + 60 * 1000);
+    const cell = document.querySelector(`td[coordinates='${data.x},${data.y}']`);
+    cell.innerHTML = currentPlayer === 0 ? xIcon : oIcon;
+    cell.setAttribute("selected", "true");
+    gameboard[data.x][data.y] = currentPlayer === 0 ? 1 : 0;
+  }
+
+  const checkWinner = (x, y, checkingPlayer) => {
+    let count = 0;
+    for (let index = x - 4; index <= x + 4; index++) {
+      const currentPlayer = getPointValue(index, y);
+      if (currentPlayer === checkingPlayer) {
+        count++;
+        if (count === 5) {
+          return checkingPlayer;
+        }
+      } else {
+        count = 0;
+      }
+    }
+
+    count = 0;
+    for (let index = y - 4; index <= y + 4; index++) {
+      const currentPlayer = getPointValue(x, index);
+      if (currentPlayer === checkingPlayer) {
+        count++;
+        if (count === 5) {
+          return checkingPlayer;
+        }
+      } else {
+        count = 0;
+      }
+    }
+
+    let checkPointXBL = x + 4;
+    let checkPointYBL = y - 4;
+    const stopPointXTR = x - 4;
+    const stopPointYTR = y + 4;
+
+    let checkPointXTL = x - 4;
+    let checkPointYTL = y - 4;
+    const stopPointXBR = x + 4;
+    const stopPointYBR = y + 4;
+
+    count = 0;
+    while (checkPointYBL <= stopPointYTR && checkPointXBL >= stopPointXTR) {
+      const currentPlayer = getPointValue(checkPointXBL, checkPointYBL);
+      if (currentPlayer === checkingPlayer) {
+        count++;
+        if (count === 5) {
+          return checkingPlayer;
+        }
+      } else {
+        count = 0;
+      }
+      checkPointYBL++;
+      checkPointXBL--;
+    }
+    count = 0;
+    while (checkPointYTL <= stopPointYBR && checkPointXTL <= stopPointXBR) {
+      const currentPlayer = getPointValue(checkPointXTL, checkPointYTL);
+      if (currentPlayer === checkingPlayer) {
+        count++;
+        if (count === 5) {
+          return checkingPlayer;
+        }
+      } else {
+        count = 0;
+      }
+      checkPointXTL++;
+      checkPointYTL++;
+    }
+  }
+
+  const getPointValue = (x, y) => {
+    try {
+      return gameboard[x][y];
+    } catch (error) {
+      return "";
+    }
+  }
+
   const cellClick = (e, x, y) => {
+    if (turn !== 1) {
+      message.warning("Not your turn!");
+      return;
+    }
     if (!e || !e.target || e.target.nodeName.toLowerCase() !== "td") return;
     if (e.target.getAttribute("selected")) return;
-    e.target.innerHTML = oIcon;
+    e.target.innerHTML = currentPlayer === 1 ? xIcon : oIcon;
     e.target.setAttribute("selected", "true");
     gameboard[x][y] = currentPlayer;
-    setDeadLine(Date.now() + 60 * 1000);
+    const winner = checkWinner(x, y, currentPlayer);
+    if (winner !== undefined) {
+      confirmPlayReplay(competitor.id, "You Win", connection);
+      connection.send("FoundWinner", competitor.id);
+    } else {
+      setTurn(0);
+      connection.send('Transfer', competitor.id, { x: x, y: y });
+      setDeadLine(Date.now());
+    }
   }
 
   const submitControl = () => {
@@ -130,45 +329,123 @@ function App() {
     message.success(`Grid is now ${x}x${y}`);
   }
 
-  const createRoom = (item) => {
-    setCompetitor(item);
+  const requestPlay = (item) => {
+    connection.send("RequestPlay", item.id);
+    setRequestingOpen(true);
+    setTimeout(() => {
+      setRequestingOpen(false);
+    }, 40000);
   }
 
-  const onSendMessage = async () => {
-    const mess = messageForm.getFieldValue("message");
-    if (!mess) return;
-    const res = await ChatServices.sendToOne(competitor.id, myConnectionId, mess);
+  const onSendMessage = async (values, from) => {
+    if (!values.message) return;
+    const res = await ChatServices.sendToOne(from.connectionId, myConnectionId, values.message);
     if (res.status !== 200) {
       message.error("Cannot send your message! try again!");
     } else {
-      messageForm.resetFields();
-      setMessages(oldMessage => [...oldMessage, {
-        isYourMessage: true,
-        content: mess
+      addMessages(from.connectionId, from.userName, values.message, true);
+    }
+  }
+
+  const addMessages = (connectionId, userName, message, isYourMessage) => {
+    setMessages((prevMessages) => {
+      const newMessages = [...prevMessages];
+      const existMessage = newMessages.find(message => message.from.connectionId === connectionId);
+      if (existMessage) {
+        newMessages.forEach(nm => {
+          if (nm.from.connectionId === connectionId) {
+            nm.messages.push({
+              isYourMessage: isYourMessage,
+              content: message
+            });
+          }
+        });
+      } else {
+        newMessages.push({
+          from: {
+            connectionId: connectionId,
+            name: userName,
+          },
+          messages: [
+            {
+              isYourMessage: isYourMessage,
+              content: message
+            }
+          ]
+        });
+      }
+      return newMessages;
+    });
+  }
+
+  const handleSetUserName = async (values) => {
+    const listPlayers = await fetchListPlayers();
+    if (listPlayers && listPlayers.length) {
+      const exitedName = listPlayers.filter(p => p.userName.toLowerCase() === values.name.toLowerCase());
+      if (exitedName && exitedName.length) {
+        message.error("This name has been chosen, please choose a different!")
+      } else {
+        connection.send('SetUserName', values.name);
+        setYourName(values.name);
+        setIsModalOpen(false);
+      }
+    } else {
+      connection.send('SetUserName', values.name);
+      setYourName(values.name);
+      setIsModalOpen(false);
+    }
+  }
+
+  const sendMessageTo = (to) => {
+    if (messages.length) {
+      const existMessage = messages.find(message => message.from.connectionId === to.id);
+      if (!existMessage) {
+        setMessages((prevMes) => [...prevMes, {
+          from: {
+            connectionId: to.id,
+            name: to.userName,
+          },
+          messages: []
+        }]);
+      }
+    } else {
+      setMessages((prevMes) => [...prevMes, {
+        from: {
+          connectionId: to.id,
+          name: to.userName,
+        },
+        messages: []
       }]);
     }
   }
 
-  const handleOk = (values) => {
-    setUserName(values.name);
-    setIsModalOpen(false);
-  };
-
   return (
     <div className="App">
+      {contextHolder}
+      <Alert message={<span>Your name: <b>{yourName}</b></span>} type="success" />
       <Modal
+        title={<Countdown title="Requesting" value={Date.now() + 40 * 1000} format="ss" />}
+        open={requestingOpen}
+        confirmLoading={true}
+        cancelText=""
+      >
+        <p>Your Request will be rejected if your competitor is not response</p>
+      </Modal>
+      <Modal
+        closeIcon={<SmileOutlined />}
         open={isModalOpen}
         title="Type your name"
         okText="Create"
+        cancelText="Stay here until you type your name :))"
         onOk={() => {
           nameForm
             .validateFields()
             .then((values) => {
               nameForm.resetFields();
-              handleOk(values);
+              handleSetUserName(values);
             })
             .catch((info) => {
-              console.log('Validate Failed:', info);
+              message.error("Your name is not valid")
             });
         }}
       >
@@ -188,78 +465,91 @@ function App() {
                 required: true,
                 message: 'Please input your name!',
               },
+              {
+                pattern: /^[^@#^*<>=+]+$/i,
+                message: 'Your name must not contain the special characters!',
+              },
             ]}
           >
             <Input />
           </Form.Item>
         </Form>
       </Modal>
-      {
-        competitor || messages.length ?
-          <>
-            {
-              chatToggle ?
-                <div className='chat-card'>
-                  <div className='chat-header'>
-                    <div className='chat-title'>
-                      {competitor && competitor.userName ? competitor.userName : "No name"}
-                    </div>
-                    <div className='chat-icon-action' onClick={() => setChatToggle(!chatToggle)}>
-                      <CaretDownOutlined />
-                    </div>
+      <div className='chat-bar'>
+        {
+          messages.map((mess, index) => {
+            return chatToggles[index] ?
+              <div className='chat-card' key={Math.random() * 100}>
+                <div className='chat-header'>
+                  <div className='chat-title'>
+                    {mess.from.name}
                   </div>
-                  <div className='chat-content'>
-                    {
-                      messages.map(m => {
-                        return m.isYourMessage ?
-                          (
-                            <div className='message-row'>
-                              <div className='my-messages'>
-                                {m.content}
-                              </div>
-
-                            </div>
-                          ) :
-                          (
-                            <div className='message-row'>
-                              <div className='friend-messages'>
-                                {m.content}
-                              </div>
-                            </div>
-                          )
-                      }
-                      )
-                    }
-                  </div>
-                  <div className='chat-action'>
-                    <Form
-                      onFinish={onSendMessage}
-                      layout='inline'
-                      form={messageForm}
-                    >
-                      <Form.Item
-                        name={"message"}
-                        style={{ width: "100%" }}
-                      >
-                        <Input style={{ width: "100%", border: "none", boxShadow: "none" }} size='large' placeholder="Type your message" prefix={<SendOutlined />} />
-                      </Form.Item>
-                    </Form>
-                  </div>
-                </div> :
-                <div className='chat-card-closed'>
-                  <div className='chat-header'>
-                    <div className='chat-title'>
-                      {competitor && competitor.userName ? competitor.userName : "No name"}
-                    </div>
-                    <div className='chat-icon-action' onClick={() => setChatToggle(!chatToggle)}>
-                      <CaretUpOutlined />
-                    </div>
+                  <div className='chat-icon-action' onClick={() => {
+                    setChatToggles((prevToggles) => {
+                      const newToggles = [...prevToggles];
+                      newToggles[index] = false;
+                      return newToggles;
+                    });
+                  }}>
+                    <CaretDownOutlined />
                   </div>
                 </div>
-            }
-          </> : <>
-          </>
-      }
+                <div className='chat-content'>
+                  {
+                    mess.messages.map(m => {
+                      return m.isYourMessage ?
+                        (
+                          <div className='message-row' key={Math.random() * 100}>
+                            <div className='my-messages'>
+                              {m.content}
+                            </div>
+                          </div>
+                        ) :
+                        (
+                          <div className='message-row' key={Math.random() * 100}>
+                            <div className='friend-messages'>
+                              {m.content}
+                            </div>
+                          </div>
+                        )
+                    }
+                    )
+                  }
+                </div>
+                <div className='chat-action'>
+                  <Form
+                    onFinish={(values) => onSendMessage(values, mess.from)}
+                    layout='inline'
+                    style={{ width: "100%" }}
+                  >
+                    <Form.Item
+                      name={"message"}
+                      style={{ width: "100%" }}
+                    >
+                      <Input style={{ width: "100%", border: "none", boxShadow: "none" }} size='large' placeholder="Type your message" prefix={<SendOutlined />} />
+                    </Form.Item>
+                  </Form>
+                </div>
+              </div>
+              :
+              <div className='chat-card-closed'>
+                <div className='chat-header'>
+                  <div className='chat-title'>
+                    {mess.from.name}
+                  </div>
+                  <div className='chat-icon-action' onClick={() => setChatToggles((prevToggles) => {
+                    const newToggles = [...prevToggles];
+                    newToggles[index] = true;
+                    return newToggles;
+                  })}>
+                    <CaretUpOutlined />
+                  </div>
+                </div>
+              </div>
+          }
+          )
+        }
+      </div>
 
       <div className="control">
         <Form
@@ -310,12 +600,13 @@ function App() {
             if (item.id !== myConnectionId) {
               return (
                 <List.Item>
-                  <Button type="dashed" size='small' icon={<PlaySquareOutlined />} onClick={() => createRoom(item)}>Play</Button>
+                  <Button type="primary" size='small' icon={<PlaySquareOutlined />} onClick={() => requestPlay(item)}>Play</Button>
+                  <Button type="dashed" size='small' icon={<SendOutlined />} onClick={() => sendMessageTo(item)}>Send message</Button>
                   <div>
                     {item.userName ? item.userName : "No name"}
                   </div>
                   <div className='player-status'>
-                    Online
+                    {item.isFree ? "Online" : "Playing"}
                   </div>
                 </List.Item>
               )
@@ -327,14 +618,10 @@ function App() {
       </div>
 
       {
-        !competitor ?
-          <div className="control">
-            <Button type="primary" size='large' icon={<PlaySquareOutlined />} onClick={createRoom}>Play</Button>
-          </div>
-          :
+        competitor ?
           <div>
             <div className="control">
-              <Alert message={"You are:"} type="info" style={{ marginRight: "20px", height: "82px" }} description={<XIcon />} />
+              <Alert message={"You are:"} type="info" style={{ marginRight: "20px", height: "82px" }} description={currentPlayer === 1 ? <XIcon /> : <OIcon />} />
               <Alert message={<span> <Countdown title="Your turn:" value={deadline} format="ss" /></span>} type="warning" />
             </div>
             <div class="grid">
@@ -344,7 +631,7 @@ function App() {
                     <Row>
                       {
                         xGridSize.map(x => (
-                          <Cell x={x} y={y} onClick={(e) => cellClick(e, x, y)} />
+                          <Cell x={y} y={x} onClick={(e) => cellClick(e, y, x)} />
                         ))
                       }
                     </Row>
@@ -353,6 +640,8 @@ function App() {
               </table>
             </div>
           </div>
+          :
+          <></>
       }
     </div>
   );

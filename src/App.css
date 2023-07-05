@@ -75,11 +75,20 @@
   font-weight: bolder;
 }
 
-.chat-card {
-  max-width: 400px;
+.chat-bar {
+  display: flex;
   position: fixed;
   bottom: 0;
-  right: 30px;
+  right: 20px;
+  flex-direction: row-reverse;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.chat-card {
+  max-width: 400px;
   height: 400px;
   width: 300px;
   border: 1px solid #ccc;
@@ -87,28 +96,27 @@
   border-top-right-radius: 8px;
   background-color: rgb(255, 255, 255);
   box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
-  transition: height 1s;
+  transition: height 0.5s;
+  margin-left: 20px;
 }
 
 .chat-card-closed {
   max-width: 400px;
-  position: fixed;
-  bottom: 0;
-  right: 30px;
   height: 38px;
   width: 300px;
   border: 1px solid #ccc;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  background-color: rgb(255, 255, 255);
+  background-color: rgba(255, 255, 255, 0.26);
   box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
-  transition: height 1s;
+  transition: height 0.5s;
+  margin-left: 20px;
 }
 
 .chat-card>.chat-action {
   position: absolute;
   bottom: 0;
-  width: 100%;
+  width: 300px;
 }
 
 .chat-card>.chat-content {
@@ -117,7 +125,7 @@
   overflow-y: auto;
 }
 
-.chat-card>.chat-header {
+.chat-header {
   height: 40px;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
@@ -156,18 +164,18 @@
 }
 
 .message-row>.my-messages {
-  float: left;
+  float: right;
   background-color: #61dafb;
   padding: 8px;
-  border-radius: 20px 20px 20px 0px;
+  border-radius: 20px 20px 0px 20px;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
 }
 
 .message-row>.friend-messages {
-  float: right;
+  float: left;
   background-color: rgb(255, 255, 255);
   padding: 8px;
-  border-radius: 20px 20px 0px 20px;
+  border-radius: 20px 20px 20px 0px;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
 }
 
