@@ -3,11 +3,11 @@ import { PATH } from "../Common/path";
 
 const ChatServices = {
     sendToAll: (message) => {
-        const url = `${PATH.local}/api/chat`;
+        const url = `${PATH.prod}/api/chat`;
         return ApiCreator.post(`${url}?message=${message}`);
     },
     sendToOne: (connectionId, from,  message) => {
-        const url = `${PATH.local}/api/chat`;
+        const url = `${PATH.prod}/api/chat`;
         return ApiCreator.post(`${url}?connectionId=${connectionId}&from=${from}&message=${message}`);
     }
 };

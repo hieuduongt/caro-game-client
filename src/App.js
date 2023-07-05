@@ -164,7 +164,7 @@ function App() {
     fetchListPlayers();
     prepairGrid(100, 100);
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${PATH.local}/api/game`)
+      .withUrl(`${PATH.prod}/api/game`)
       .build();
 
     connection.start()
