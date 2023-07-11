@@ -79,7 +79,12 @@ function App() {
 
   const confirmReplay = (connId, mess, conn) => {
     modal.confirm({
-      title: <Countdown title="Auto reset after" value={Date.now() + 30 * 1000} format="ss" />,
+      title: <Countdown title="Auto reset after" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
+        conn.send('RejectPlayAgain', connId);
+        prepairGrid(150, 150);
+        setCompetitor(undefined);
+        conn.send("UpdateStatus", conn.connectionId, true);
+      }}/>,
       icon: <ExclamationCircleOutlined />,
       content: mess,
       okText: 'Replay',
@@ -99,7 +104,10 @@ function App() {
 
   const confirmPlayRequesting = (user, mess, conn) => {
     modal.confirm({
-      title: <Countdown title="Auto reject after" value={Date.now() + 30 * 1000} format="ss" />,
+      title: <Countdown title="Auto reject after" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
+        conn.send('RejectPlay', user.id);
+        Modal.destroyAll();
+      }} />,
       icon: <ExclamationCircleOutlined />,
       content: mess,
       okText: 'Play',
@@ -268,7 +276,7 @@ function App() {
       block: 'center',
       inline: 'center'
     });
-    gameboard[data.x][data.y] = currentPlayer === 0 ? 1 : 0;
+    gameboard[data.x][data.y] = data.competitor === 0 ? 1 : 0;
   }
 
   const checkWinner = (x, y, checkingPlayer) => {
@@ -460,20 +468,26 @@ function App() {
     <>
       {!isPageReady ?
         <Spin size='large' style={{ flexDirection: "row", width: "100%", height: "100vh", display: "flex", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }} tip="Loading..." >
-          <span>Loading...</span>
+          <span></span>
         </Spin> :
         <div className="App">
           {contextHolder}
           <Alert message={<span>Your name: <b>{yourName}</b></span>} type="success" />
           <Modal
-            title={<Countdown title="Requesting" value={Date.now() + 40 * 1000} format="ss" onFinish={() => {console.log("Hết giờ")}}/>}
+            title={<Countdown title="Play Requesting" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
+              setRequestingOpen(false);
+            }}/>}
+            closeIcon={<SmileOutlined />}
+            closable={false}
             open={requestingOpen}
             confirmLoading={true}
-            cancelText=""
+            cancelText="This is automated action, not to cancel :))"
+            okText="Requesting..."
           >
             <p>Your Request will be rejected if your competitor is not response</p>
           </Modal>
           <Modal
+            closable={false}
             closeIcon={<SmileOutlined />}
             open={isModalOpen}
             title="Type your name"
