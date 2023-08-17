@@ -2,9 +2,7 @@ import './App.css';
 import React, { useEffect, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Button, Form, Input, Spin, message, Alert, Statistic, Modal, List, Affix } from 'antd';
-import { PlaySquareOutlined, SendOutlined, CaretDownOutlined, CaretUpOutlined, ExclamationCircleOutlined, SmileOutlined, MessageOutlined } from '@ant-design/icons';
-import ChatServices from './API/chatServices';
-import ConnectionServices from './API/connectionServices';
+import { PlaySquareOutlined, SendOutlined, CaretDownOutlined, CaretUpOutlined, ExclamationCircleOutlined, SmileOutlined } from '@ant-design/icons';
 import { PATH } from './Common/path';
 const { Countdown } = Statistic;
 
@@ -35,6 +33,7 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(true);
   const [connection, setConnection] = useState(null);
   const [competitor, setCompetitor] = useState();
+  const [resultMessage, setResultMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [chatToggles, setChatToggles] = useState([true, true]);
   const [xGridSize, setXGridSize] = useState([]);
@@ -77,78 +76,28 @@ function App() {
     });
   }
 
-  const confirmReplay = (connId, mess, conn) => {
+  const confirm = (
+    content = "",
+    timeOut = 0,
+    onOk = () => Modal.destroyAll(),
+    onCancel = () => Modal.destroyAll(),
+    onOkText = "Ok",
+    onCancelText = "Cancel") => {
     modal.confirm({
-      title: <Countdown title="Auto reset after" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
-        conn.send('RejectPlayAgain', connId);
-        prepairGrid(150, 150);
-        setCompetitor(undefined);
-        conn.send("UpdateStatus", conn.connectionId, true);
-      }}/>,
+      title: timeOut ? <Countdown title="Auto reset after" value={Date.now() + timeOut * 1000} format="ss" onFinish={() => onCancel()} /> : "Confirm",
       icon: <ExclamationCircleOutlined />,
-      content: mess,
-      okText: 'Replay',
-      cancelText: 'Exit',
-      onOk: () => {
-        prepairGrid(150, 150);
-      },
-      onCancel: () => {
-        conn.send('RejectPlayAgain', connId);
-        prepairGrid(150, 150);
-        setCompetitor(undefined);
-        conn.send("UpdateStatus", conn.connectionId, true);
-      },
+      content: content,
+      okText: onOkText,
+      cancelText: onCancelText,
+      onOk: () => onOk(),
+      onCancel: () => onCancel(),
       centered: true,
     });
   }
 
-  const confirmPlayRequesting = (user, mess, conn) => {
-    modal.confirm({
-      title: <Countdown title="Auto reject after" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
-        conn.send('RejectPlay', user.id);
-        Modal.destroyAll();
-      }} />,
-      icon: <ExclamationCircleOutlined />,
-      content: mess,
-      okText: 'Play',
-      cancelText: 'Cancel',
-      onOk: () => {
-        setCurrentPlayer(0);
-        conn.send('AcceptPlay', user.id);
-        startPlay(user.id);
-        conn.send("UpdateStatus", conn.connectionId, false);
-        setDeadLine(Date.now() + 60 * 1000);
-      },
-      onCancel: () => {
-        conn.send('RejectPlay', user.id);
-      },
-      centered: true,
-    });
-  }
-
-  const confirmRejected = (mess) => {
-    modal.info({
-      title: 'Player rejected!',
-      icon: <ExclamationCircleOutlined />,
-      content: mess,
-      okText: 'Ok'
-    });
-  }
-
-  const fetchListPlayers = async () => {
-    setIsPageReady(false);
-    const res = await ConnectionServices.getAll();
-    if (res.status === 200) {
-      setListPlayers(res.data.results);
-    }
-    setIsPageReady(true);
-    return res.data.results;
-  }
-
-  const startPlay = async (connId) => {
-    const player = await ConnectionServices.getOne(connId);
-    if (player.status === 200) {
-      setCompetitor(player.data.result);
+  const startPlay = async (user) => {
+    if (user) {
+      setCompetitor(user);
     } else {
       Modal.destroyAll();
       setRequestingOpen(false);
@@ -157,7 +106,7 @@ function App() {
   }
 
   useEffect(() => {
-    fetchListPlayers();
+    setIsPageReady(false);
     prepairGrid(150, 150);
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${PATH.prod}/api/game`)
@@ -173,17 +122,30 @@ function App() {
         .then(() => {
           setMyConnectionId(connection.connectionId);
           connection.on("AcceptedPlay", async (user) => {
-            await ConnectionServices.updateStatus(connection.connectionId, false);
-            connection.send("UpdateStatus", connection.connectionId, false);
+            connection.send("UpdateStatus", false);
             setRequestingOpen(false);
             setCurrentPlayer(1);
             setTurn(1);
-            startPlay(user.id);
+            startPlay(user);
             setDeadLine(Date.now() + 60 * 1000);
+            Modal.destroyAll();
           });
 
           connection.on("RequestedPlay", (user, mess) => {
-            confirmPlayRequesting(user, mess, connection);
+            confirm(mess, 30, () => {
+              setCurrentPlayer(0);
+              connection.send('AcceptPlay', user.connectionId);
+              startPlay(user);
+              connection.send("UpdateStatus", false);
+              setDeadLine(Date.now() + 60 * 1000);
+            },
+              () => {
+                connection.send('RejectPlay', user.connectionId);
+                Modal.destroyAll();
+              },
+              "Play",
+              "Cancel",
+            )
           });
 
           connection.on("RejectedPlayAgain", (connId) => {
@@ -191,23 +153,70 @@ function App() {
             setCompetitor(undefined);
             Modal.destroyAll();
             message.info("Your competitor leaved this game!!!");
-            connection.send("UpdateStatus", connection.connectionId, true);
+            connection.send("UpdateStatus", true);
+            setRequestingOpen(false);
           });
 
           connection.on("RejectedPlay", (connId, mess) => {
             setRequestingOpen(false);
-            confirmRejected(mess);
+            confirm(mess);
           });
 
           connection.on("YouLose", (connId) => {
-            confirmReplay(connId, "You lose!!!", connection);
+            confirm(
+              "You lose!!!",
+              30,
+              () => {
+                prepairGrid(150, 150);
+                setRequestingOpen(false);
+                confirm("Waiting for your competitor...", 30);
+              },
+              () => {
+                connection.send('RejectPlayAgain', connId);
+                prepairGrid(150, 150);
+                setCompetitor(undefined);
+                connection.send("UpdateStatus", true);
+              },
+              "Replay",
+              "Exit")
+          });
+
+          connection.on("NameExisted", (result) => {
+            modal.confirm({
+              title: `Error: ${result}`,
+              icon: <ExclamationCircleOutlined />,
+              content: "This name already existed!",
+              okText: 'Ok',
+              cancelText: '',
+              onOk: () => { },
+              centered: true,
+            });
+          });
+
+          connection.on("SetNameDone", (result) => {
+            setYourName(result);
+            setIsModalOpen(false);
           });
 
           connection.on("YouWin", (connId) => {
-            confirmReplay(connId, "You Win! Your competitor is out of time!", connection);
+            confirm(
+              "You Win! Your competitor is out of time!",
+              30,
+              () => {
+                prepairGrid(150, 150);
+                setRequestingOpen(false);
+              },
+              () => {
+                connection.send('RejectPlayAgain', connId);
+                prepairGrid(150, 150);
+                setCompetitor(undefined);
+                connection.send("UpdateStatus", true);
+              },
+              "Replay",
+              "Exit")
           });
 
-          connection.on("ReceiveMessage", async (connId, userName, mess) => {
+          connection.on("IncomingMessage", async (connId, userName, mess) => {
             addMessages(connId, userName, mess, false);
           });
 
@@ -215,54 +224,19 @@ function App() {
             swicthTurn(data);
           });
 
-          connection.on("NewUserLogin", data => {
-            displayOnlineUser(data);
+          connection.on("UserChange", data => {
+            setListPlayers(data);
           });
 
-          connection.on("UserLogout", id => {
-            removeOffLineUser(id);
-          });
-
-          connection.on("UpdateStatus", (connId, status) => {
-            updateUserStatus(connId, status);
-          });
+          setIsPageReady(true);
         })
         .catch((error) => {
           console.error(error);
+          message.error("Cannot connect to server! Refreshing page...");
+          window.location.reload();
         });
-    };
+    }
   }, [connection]);
-
-  const updateUserStatus = (connId, status) => {
-    setListPlayers((prevList) => {
-      const newList = [...prevList];
-      newList.forEach(user => {
-        if (user.id === connId) user.isFree = status;
-      })
-      return newList;
-    });
-  }
-
-  const displayOnlineUser = (data) => {
-    setListPlayers((prev) => {
-      const newList = [...prev];
-      const existed = newList.find(n => n.id === data.id);
-      if (!existed) {
-        newList.push(data);
-      } else {
-        existed.userName = data.userName;
-      }
-      return newList;
-    });
-  }
-
-  const removeOffLineUser = (id) => {
-    setListPlayers((prev) => {
-      const newList = [...prev];
-      const returnList = newList.filter(n => n.id !== id);
-      return returnList;
-    });
-  }
 
   const swicthTurn = (data) => {
     setTurn(1);
@@ -276,7 +250,7 @@ function App() {
       block: 'center',
       inline: 'center'
     });
-    gameboard[data.x][data.y] = data.competitor === 0 ? 1 : 0;
+    gameboard[data.x][data.y] = data.competitor;
   }
 
   const checkWinner = (x, y, checkingPlayer) => {
@@ -368,28 +342,38 @@ function App() {
     gameboard[x][y] = currentPlayer;
     const winner = checkWinner(x, y, currentPlayer);
     if (winner !== undefined) {
-      confirmReplay(competitor.id, "You Win", connection);
-      connection.send("FoundWinner", competitor.id);
+      confirm(
+        "You Win!",
+        30,
+        () => {
+          prepairGrid(150, 150);
+          setRequestingOpen(false);
+        },
+        () => {
+          connection.send('RejectPlayAgain', competitor.connectionId);
+          prepairGrid(150, 150);
+          setCompetitor(undefined);
+          connection.send("UpdateStatus", true);
+        },
+        "Replay",
+        "Exit");
+      connection.send("FoundWinner", competitor.connectionId);
     } else {
       setTurn(0);
-      connection.send('Transfer', competitor.id, { x: x, y: y, competitor: currentPlayer });
+      connection.send('Transfer', competitor.connectionId, { x: x, y: y, competitor: currentPlayer });
       setDeadLine(Date.now() + 60 * 1000);
     }
   }
 
   const requestPlay = (item) => {
-    connection.send("RequestPlay", item.id);
+    connection.send("RequestPlay", item.connectionId);
     setRequestingOpen(true);
   }
 
   const onSendMessage = async (values, from) => {
     if (!values.message) return;
-    const res = await ChatServices.sendToOne(from.connectionId, myConnectionId, values.message);
-    if (res.status !== 200) {
-      message.error("Cannot send your message! try again!");
-    } else {
-      addMessages(from.connectionId, from.userName, values.message, true);
-    }
+    connection.send("SendMessageToClient", from.from.connectionId, values.message);
+    addMessages(from.from.connectionId, from.from.name, values.message, true);
   }
 
   const addMessages = (connectionId, userName, message, isYourMessage) => {
@@ -424,25 +408,16 @@ function App() {
   }
 
   const handleSetUserName = async (values) => {
-    const listPlayers = await fetchListPlayers();
-    if (listPlayers && listPlayers.length) {
-      const exitedName = listPlayers.filter(p => p.userName.toLowerCase() === values.name.toLowerCase());
-      if (exitedName && exitedName.length) {
-        return message.error("This name has been chosen, please choose a different!");
-      }
-    }
-    connection.send('SetUserName', values.name);
-    setYourName(values.name);
-    setIsModalOpen(false);
+    connection.send('SetUserName', values.userName);
   }
 
   const sendMessageTo = (to) => {
     if (messages.length) {
-      const existMessage = messages.find(message => message.from.connectionId === to.id);
+      const existMessage = messages.find(message => message.from.connectionId === to.connectionId);
       if (!existMessage) {
         setMessages((prevMes) => [...prevMes, {
           from: {
-            connectionId: to.id,
+            connectionId: to.connectionId,
             name: to.userName,
           },
           messages: []
@@ -451,7 +426,7 @@ function App() {
     } else {
       setMessages((prevMes) => [...prevMes, {
         from: {
-          connectionId: to.id,
+          connectionId: to.connectionId,
           name: to.userName,
         },
         messages: []
@@ -460,8 +435,22 @@ function App() {
   }
 
   const checkTimeUp = () => {
-    confirmReplay(competitor.id, "Time's up, You Lose!", connection);
-    connection.send("TimesUp", competitor.id);
+    confirm(
+      "Time's up, You Lose!",
+      30,
+      () => {
+        prepairGrid(150, 150);
+        setRequestingOpen(false);
+      },
+      () => {
+        connection.send('RejectPlayAgain', competitor.connectionId);
+        prepairGrid(150, 150);
+        setCompetitor(undefined);
+        connection.send("UpdateStatus", true);
+      },
+      "Replay",
+      "Exit")
+    connection.send("TimesUp", competitor.connectionId);
   }
 
   return (
@@ -472,11 +461,11 @@ function App() {
         </Spin> :
         <div className="App">
           {contextHolder}
-          <Alert message={<span>Your name: <b>{yourName}</b></span>} type="success" />
+
           <Modal
             title={<Countdown title="Play Requesting" value={Date.now() + 30 * 1000} format="ss" onFinish={() => {
               setRequestingOpen(false);
-            }}/>}
+            }} />}
             closeIcon={<SmileOutlined />}
             closable={false}
             open={requestingOpen}
@@ -497,11 +486,11 @@ function App() {
               nameForm
                 .validateFields()
                 .then((values) => {
-                  nameForm.resetFields();
                   handleSetUserName(values);
+                  nameForm.resetFields();
                 })
                 .catch((info) => {
-                  message.error("Your name is not valid")
+                  message.error("Your name is not valid");
                 });
             }}
           >
@@ -514,7 +503,7 @@ function App() {
               }}
             >
               <Form.Item
-                name="name"
+                name="userName"
                 label="Your name"
                 rules={[
                   {
@@ -535,7 +524,7 @@ function App() {
             {
               messages.map((mess, index) => {
                 return chatToggles[index] ?
-                  <div className='chat-card' key={Math.random() * 100}>
+                  <div className='chat-card' key={mess.from.connectionId}>
                     <div className='chat-header'>
                       <div className='chat-title'>
                         {mess.from.name}
@@ -555,14 +544,14 @@ function App() {
                         mess.messages.map(m => {
                           return m.isYourMessage ?
                             (
-                              <div className='message-row' key={Math.random() * 100}>
+                              <div className='message-row' key={Math.random() * 1000}>
                                 <div className='my-messages'>
                                   {m.content}
                                 </div>
                               </div>
                             ) :
                             (
-                              <div className='message-row' key={Math.random() * 100}>
+                              <div className='message-row' key={Math.random() * 1000}>
                                 <div className='friend-messages'>
                                   {m.content}
                                 </div>
@@ -574,9 +563,10 @@ function App() {
                     </div>
                     <div className='chat-action'>
                       <Form
-                        onFinish={(values) => onSendMessage(values, mess.from)}
+                        onFinish={(values) => onSendMessage(values, mess)}
                         layout='inline'
                         style={{ width: "100%" }}
+                        key={Math.random() * 1000}
                       >
                         <Form.Item
                           name={"message"}
@@ -611,17 +601,23 @@ function App() {
               <></>
               :
               <div className='list-players'>
+                <Alert message={<span>Your name: <b>{yourName}</b></span>} type="success" style={{
+                  width: "100%",
+                  maxWidth: "600px"
+                }}
+                />
                 <List
                   style={{
-                    margin: "30px",
-                    width: "500px"
+                    marginTop: "20px",
+                    width: "100%",
+                    maxWidth: "600px"
                   }}
                   size="large"
                   header={<div>List online players</div>}
                   bordered
                   dataSource={listPlayers}
                   renderItem={(item) => {
-                    if (item.id !== myConnectionId) {
+                    if (item.connectionId !== myConnectionId) {
                       return (
                         <List.Item>
                           <Button disabled={!item.isFree} type="primary" size='small' icon={<PlaySquareOutlined />} onClick={() => requestPlay(item)}>Play</Button>
@@ -643,22 +639,25 @@ function App() {
           }
           {
             competitor ?
-              <div style={{marginTop: "20px"}}>
-                <div className="control">
-                  <Alert message={"You are:"} type="info" style={{ marginRight: "20px", height: "82px" }} description={currentPlayer === 1 ? <XIcon /> : <OIcon />} />
-                  <Alert className={turn === 1 ? "count-down" : ""} message={turn === 1 ? <Countdown title="Your turn:" value={deadline} format="ss" onFinish={() => checkTimeUp()}/> : <Countdown title="Your competitor time:" value={deadline} format="ss" />} type={turn === 1 ? "warning" : "info"} />
-                  <Button type="dashed" size='large' style={{ marginLeft: "20px", height: "82px" }} icon={<SendOutlined />} onClick={() => sendMessageTo(competitor)}>
-                    Send message to {competitor.userName}
-                  </Button>
-                </div>
+              <div>
+                <Affix offsetTop={20}>
+                  <div className="control">
+                    <Alert message={"You are:"} type="info" style={{ marginRight: "20px", height: "82px" }} description={currentPlayer === 1 ? <XIcon /> : <OIcon />} />
+                    <Alert className={turn === 1 ? "count-down" : ""} message={turn === 1 ? <Countdown title="Your turn:" value={deadline} format="ss" onFinish={() => checkTimeUp()} /> : <Countdown title="Your competitor time:" value={deadline} format="ss" />} type={turn === 1 ? "warning" : "info"} />
+                    <Button type="dashed" size='large' style={{ marginLeft: "20px", height: "82px" }} icon={<SendOutlined />} onClick={() => sendMessageTo(competitor)}>
+                      Send message to {competitor.userName}
+                    </Button>
+                  </div>
+                </Affix>
+
                 <div class="grid">
                   <table id="game" >
                     {
                       yGridSize.map(y => (
-                        <Row>
+                        <Row key={y}>
                           {
                             xGridSize.map(x => (
-                              <Cell x={y} y={x} onClick={(e) => cellClick(e, y, x)} />
+                              <Cell key={`${y}x${x}`} x={y} y={x} onClick={(e) => cellClick(e, y, x)} />
                             ))
                           }
                         </Row>

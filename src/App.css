@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  padding: 20px;
 }
 
 .App-logo {
@@ -84,12 +85,12 @@
 }
 
 .control {
-  padding: 20px;
   display: flex;
   flex-wrap: nowrap;
   align-content: center;
   justify-content: center;
   align-items: center;
+  margin-bottom: 20px;
 }
 
 .text-danger {
@@ -216,7 +217,7 @@
 
 .list-players {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   flex-wrap: nowrap;
   align-content: center;
   justify-content: center;
