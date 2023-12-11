@@ -1,6 +1,8 @@
-.App {
+.app {
   text-align: center;
-  padding: 20px;
+  overflow: auto;
+  width: 100%;
+  height: 100vh;
 }
 
 .App-logo {
@@ -33,193 +35,79 @@
   from {
     transform: rotate(0deg);
   }
-
   to {
     transform: rotate(360deg);
   }
 }
 
-@keyframes blinkingBackground{
-  0%		{ background-color: #ffffff;}
-  100%		{ background-color: #ff7b00;}
+.game-table {
+  width: 100%;
+  height: 100%;
 }
 
-@keyframes blinkingBackgroundCd{
-  0%		{ background-color: #ff9900;}
-  100%		{ background-color: #66ff00;}
-}
-
-.count-down {
-  animation: blinkingBackgroundCd 1s infinite;
-}
-
-.grid {
-  overflow-x: auto;
-  overflow-y: auto;
-  height: 100vh;
-}
-
-#game {
-  border: 1px solid #ccc;
-  text-align: center;
-  margin: auto auto;
-  border-radius: 4px;
-}
-
-.cell {
-  min-width: 35px;
-  min-height: 35px;
-  width: 35px;
-  height: 35px;
-  text-align: center;
-  border: 1px solid #ccc;
+.game-table td {
+  border: 0.3px solid #ccc;
   cursor: pointer;
-}
-
-.cell.choose {
-  animation: blinkingBackground 1s infinite;
-}
-
-.cell:hover {
-  background-color: #a0a0a091;
-}
-
-.control {
-  display: flex;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.text-danger {
-  color: red;
-  font-weight: bolder;
-}
-
-.chat-bar {
-  display: flex;
-  position: fixed;
-  bottom: 0;
-  right: 20px;
-  flex-direction: row-reverse;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: flex-end;
-}
-
-.chat-card {
-  max-width: 400px;
-  height: 400px;
-  width: 300px;
-  border: 1px solid #ccc;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  background-color: rgb(255, 255, 255);
-  box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
-  transition: height 0.5s;
-  margin-left: 20px;
-}
-
-.chat-card-closed {
-  max-width: 400px;
-  height: 38px;
-  width: 300px;
-  border: 1px solid #ccc;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.26);
-  box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
-  transition: height 0.5s;
-  margin-left: 20px;
-}
-
-.chat-card>.chat-action {
-  position: absolute;
-  bottom: 0;
-  width: 300px;
-}
-
-.chat-card>.chat-content {
-  height: 320px;
-  background-color: rgba(221, 221, 221, 0.705);
-  overflow-y: auto;
-}
-
-.chat-header {
-  height: 40px;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  border-bottom: 1px solid #ccc;
-  box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px;
-  display: flex;
-  flex-wrap: nowrap;
-  position: relative;
-}
-
-.chat-header>.chat-title {
-  font-weight: bold;
-  padding: 10px;
-}
-
-.chat-header>.chat-icon-action {
-  cursor: pointer;
-  position: absolute;
-  top: 0;
-  right: 0;
+  min-width: 40px;
+  min-height: 40px;
   width: 40px;
   height: 40px;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
+  max-width: 40px;
+  max-height: 40px;
+  text-align: center;
+  justify-self: center;
 }
 
-
-.chat-content>.message-row {
-  min-height: 30px;
-  padding: 5px;
-  margin-bottom: 10px;
+.game-table td:hover {
+  animation: blink-cell-hover 1.8s infinite;
 }
 
-.message-row>.my-messages {
-  float: right;
-  background-color: #61dafb;
-  padding: 8px;
-  border-radius: 20px 20px 0px 20px;
-  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+.current {
+  animation: blink-warning 1.2s infinite;
 }
 
-.message-row>.friend-messages {
-  float: left;
-  background-color: rgb(255, 255, 255);
-  padding: 8px;
-  border-radius: 20px 20px 20px 0px;
-  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+.win {
+  background-color: rgb(255, 66, 66);
 }
 
-.player-status {
-  font-weight: bold;
-  text-shadow: #282c34;
+@keyframes blink-warning {
+  0% {
+    background-color: #ccc;
+  }
+
+  50% {
+    background-color: rgb(255, 196, 0);
+  }
+
+  100% {
+    background-color: #ccc;
+  }
 }
 
-.is-online {
-  color: rgb(0, 255, 76);
+@keyframes blink-success {
+  0% {
+    background-color: #ccc;
+  }
+
+  50% {
+    background-color: rgb(51, 189, 51);
+  }
+
+  100% {
+    background-color: #ccc;
+  }
 }
 
-.is-playing {
-  color: rgb(251, 255, 0);
-}
+@keyframes blink-cell-hover {
+  0% {
+    background-color: #ccc;
+  }
 
-.list-players {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
+  50% {
+    background-color: rgb(51, 95, 189);
+  }
+
+  100% {
+    background-color: #ccc;
+  }
 }
