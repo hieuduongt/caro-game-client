@@ -1,113 +1,60 @@
-.app {
-  text-align: center;
-  overflow: auto;
-  width: 100%;
-  height: 100vh;
+*::-webkit-scrollbar,
+*::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+  background-clip: padding-box;
+  border: 4px solid transparent;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+*::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 0 10px;
+
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+*::-webkit-scrollbar-track {
+  border-radius: 8px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+*::-webkit-scrollbar-corner {
+  border-radius: 6px;
+}
+
+.game-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  margin: auto;
+  margin-top: 20px;
+  max-width: 1280px;
+  flex-direction: row-reverse;
 }
 
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+@media only screen and (max-width: 1280px) {
+  .game-container {
+    display: flex;
+    margin-right: 20px;
+    margin-left: 20px;
+    margin-top: 20px;
   }
 }
 
-.game-table {
-  width: 100%;
-  height: 100%;
-}
-
-.game-table td {
-  border: 0.3px solid #ccc;
-  cursor: pointer;
-  min-width: 40px;
-  min-height: 40px;
-  width: 40px;
-  height: 40px;
-  max-width: 40px;
-  max-height: 40px;
-  text-align: center;
-  justify-self: center;
-}
-
-.game-table td:hover {
-  animation: blink-cell-hover 1.8s infinite;
-}
-
-.current {
-  animation: blink-warning 1.2s infinite;
-}
-
-.win {
-  background-color: rgb(255, 66, 66);
-}
-
-@keyframes blink-warning {
-  0% {
-    background-color: #ccc;
+@media only screen and (max-width: 1140px) {
+  .game-container {
+    display: flex;
+    margin-right: 20px;
+    margin-left: 20px;
+    margin-top: 20px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: center;
+    align-items: center;
   }
 
-  50% {
-    background-color: rgb(255, 196, 0);
+  .game-menu {
+    max-width: 800px;
+    margin-left: 0 !important;
+    margin-bottom: 20px;
   }
 
-  100% {
-    background-color: #ccc;
-  }
-}
-
-@keyframes blink-success {
-  0% {
-    background-color: #ccc;
-  }
-
-  50% {
-    background-color: rgb(51, 189, 51);
-  }
-
-  100% {
-    background-color: #ccc;
-  }
-}
-
-@keyframes blink-cell-hover {
-  0% {
-    background-color: #ccc;
-  }
-
-  50% {
-    background-color: rgb(51, 95, 189);
-  }
-
-  100% {
-    background-color: #ccc;
+  .game-table {
+    min-width: 300px !important;
+    width: 100% !important;
   }
 }

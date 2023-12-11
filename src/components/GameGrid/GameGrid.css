@@ -1,0 +1,98 @@
+.game-grid {
+    position: relative;
+    width: 100%;
+}
+
+.game-table {
+    width: 800px;
+    min-width: 800px;
+    overflow: auto;
+    height: 800px;
+    min-height: 800px;
+    box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+    border-radius: 8px;
+}
+
+.game-table-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 8px;
+    transition: opacity 1s ease-in-out;
+    font-weight: bolder;
+    font-size: 50px;
+    text-shadow: rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-table td {
+    box-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px;
+    cursor: pointer;
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    justify-self: center;
+}
+
+.game-table td:hover {
+    animation: blink-cell-hover 1.8s infinite;
+}
+
+.current {
+    animation: blink-warning 1.2s infinite;
+}
+
+.win {
+    background-color: rgb(255, 66, 66);
+}
+
+@keyframes blink-warning {
+    0% {
+        background-color: #ccc;
+    }
+
+    50% {
+        background-color: rgb(255, 196, 0);
+    }
+
+    100% {
+        background-color: #ccc;
+    }
+}
+
+@keyframes blink-success {
+    0% {
+        background-color: #ccc;
+    }
+
+    50% {
+        background-color: rgb(51, 189, 51);
+    }
+
+    100% {
+        background-color: #ccc;
+    }
+}
+
+@keyframes blink-cell-hover {
+    0% {
+        background-color: #ccc;
+    }
+
+    50% {
+        background-color: rgb(51, 95, 189);
+    }
+
+    100% {
+        background-color: #ccc;
+    }
+}

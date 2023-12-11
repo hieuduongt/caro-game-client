@@ -1,13 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import './App.css';
-import GameGrid from './components/GameGrid/GameGrid';
 import * as signalR from "@microsoft/signalr";
 import { PlayerContext } from './helpers/Context';
+import InGame from './Components/Ingame/Ingame';
+import Home from './Components/Home/Home';
+import RoomList from './Components/RoomList/RoomList';
 
-function App() {
+const App : FC = () => {
   const [player, setPlayer] = useState<string>("playerX");
   const connected = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
+  const [step, setStep] = useState<number>(1);
 
   useEffect((): any => {
     if (connected.current)
@@ -32,7 +35,9 @@ function App() {
 
   return (
     <PlayerContext.Provider value={[player, setPlayer]}>
-      <GameGrid currentPlayer={player} foundWinner={(winner, reset) => { console.log(winner); }} lengthX={40} lengthY={20} onclick={() => { }} />
+      {step === 1 ? <Home/> : <></>}
+      {step === 2 ?<RoomList/> : <></>}
+      {step === 3 ? <InGame/> : <></>}
     </PlayerContext.Provider>
   );
 }
