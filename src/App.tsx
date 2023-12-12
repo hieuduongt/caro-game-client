@@ -10,7 +10,7 @@ const App : FC = () => {
   const [player, setPlayer] = useState<string>("playerX");
   const connected = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
-  const [step, setStep] = useState<number>(3);
+  const [step, setStep] = useState<number>(1);
 
   useEffect((): any => {
     if (connected.current)
