@@ -2,15 +2,15 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import './App.css';
 import * as signalR from "@microsoft/signalr";
 import { PlayerContext } from './helpers/Context';
-import InGame from './Components/Ingame/Ingame';
-import Home from './Components/Home/Home';
-import RoomList from './Components/RoomList/RoomList';
+import InGame from './components/Ingame/Ingame';
+import Home from './components/Home/Home';
+import RoomList from './components/RoomList/RoomList';
 
 const App : FC = () => {
   const [player, setPlayer] = useState<string>("playerX");
   const connected = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(3);
 
   useEffect((): any => {
     if (connected.current)

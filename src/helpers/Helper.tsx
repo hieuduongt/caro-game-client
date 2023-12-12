@@ -1,4 +1,4 @@
-import { CellValue } from "../Components/GameGrid/GameGrid";
+import { CellValue } from "../components/GameGrid/GameGrid";
 
 interface ReturnResult {
     winner: string;
