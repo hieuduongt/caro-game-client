@@ -16,15 +16,21 @@ const App : FC = () => {
     if (connected.current)
       return
     const hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl("https://caro-game-server-19011997.azurewebsites.net/api/game")
+      .withUrl("https://localhost:7222/game")
       .configureLogging(signalR.LogLevel.Information)
       .withAutomaticReconnect()
       .build();
 
     hubConnection.start().then(a => {
       if (hubConnection.connectionId) {
-        hubConnection.on("RejectedPlay", (connId, mess) => {
-          hubConnection.send('RejectPlay', {});
+        hubConnection.on("UserLeaved", (mess) => {
+          console.log(mess);
+        });
+        hubConnection.on("SetOwner", (data) => {
+          console.log(data);
+        });
+        hubConnection.on("WelComeMessage", (mess) => {
+          console.log(mess);
         });
       }
     });
