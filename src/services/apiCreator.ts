@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const apiCaller = axios.create({
@@ -8,32 +8,52 @@ const apiCaller = axios.create({
     }
 });
 
-apiCaller.interceptors.response.use(
-    (response) => {
-        return response;
-        
-    },
-    (error) => {
-        if (!error.response) {
-            console.log("%cSystem: " + error.message + "!", "color:red; font-size:30px;");
-            return;
-        }
-        const navigate = useNavigate();
-        const location = useLocation();
-        // handle Errors
-        switch (error.response.status) {
-            case 400:
-                return error.response.data.errors;
-            case 401:
-                return navigate(`/login?redirectUri=${location.pathname}`);
-            case 403:
-                return navigate(`/login?redirectUri=${location.pathname}`);
-            default:
-                console.log(error);
-        }
+interface ResponseData {
+    code: number;
+    errorMessage: string[];
+    responseData: any;
+    isSuccess: Boolean;
+}
 
-        return error.response;
+type Request = (url: string, data?: any) => Promise<ResponseData>;
+
+export const post: Request = async (url: string, data: any) => {
+    const res = await apiCaller.post<ResponseData>(url, data);
+    if (res.status === 200) {
+        return res.data;
+    } else {
+        const result: ResponseData = {
+            code: res.status,
+            errorMessage: ["Cannot send your request"],
+            isSuccess: false,
+            responseData: null
+        }
+        return result;
     }
-);
+}
 
-export default apiCaller;
+export const get: Request = async (url: string, data: any) => {
+    try {
+        const res = await apiCaller.get<ResponseData>(url, data!);
+        if (res.status === 200) {
+            return res.data;
+        } else {
+            const result: ResponseData = {
+                code: res.status,
+                errorMessage: ["Cannot send your request"],
+                isSuccess: false,
+                responseData: null
+            }
+            return result;
+        }
+    } catch (ex: any) {
+        const error = ex as AxiosError;
+        const result: ResponseData = {
+            code: 500,
+            errorMessage: [error.message],
+            isSuccess: false,
+            responseData: null
+        }
+        return result;
+    }
+}
