@@ -1,9 +1,10 @@
 import { FC, useContext, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
-import { LoginOutlined, UserAddOutlined, RobotOutlined, WarningOutlined } from '@ant-design/icons';
+import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
 import { StepContext } from "../../helpers/Context";
-import { getAllUsers, login, register } from "../../services/authServices";
+import { login, register } from "../../services/AuthServices";
+import { getAllRooms } from "../../services/RoomServices";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
 
@@ -15,18 +16,22 @@ const Home: FC<HomeProps> = (props) => {
     const [loginForm] = Form.useForm();
     const [registerForm] = Form.useForm();
     const [openLoginForm, setOpenLoginForm] = useState<boolean>(false);
+    const [loggingIn, setLoggingIn] = useState<boolean>(false);
     const [openRegisterForm, setOpenRegisterForm] = useState<boolean>(false);
+    const [registering, setRegistering] = useState<boolean>(false);
 
     const handleLogin = () => {
         loginForm
             .validateFields()
             .then(async (values) => {
+                setLoggingIn(true);
                 const result = await login(values);
                 if (result.code === 200 && result.isSuccess) {
                     loginForm.resetFields();
                     sessionStorage.setItem("authToken", result.responseData);
                     setStep(2);
                     setOpenLoginForm(false);
+                    setLoggingIn(false);
                 } else {
                     for (let it of result.errorMessage) {
                         api.error({
@@ -36,15 +41,19 @@ const Home: FC<HomeProps> = (props) => {
                             placement: "top"
                         })
                     }
+                    setLoggingIn(false);
                 }
             })
-            .catch((info) => { });
+            .catch((info) => {
+                setLoggingIn(false);
+            });
     }
 
     const handleRegister = () => {
         registerForm
             .validateFields()
             .then(async (values) => {
+                setRegistering(true);
                 const result = await register(values);
                 if (result.code === 200 && result.isSuccess) {
                     registerForm.resetFields();
@@ -54,27 +63,25 @@ const Home: FC<HomeProps> = (props) => {
                     });
                     setOpenLoginForm(true);
                     setOpenRegisterForm(false);
+                    setRegistering(false);
                 } else {
-                    // for (let it of result.errorMessage) {
-                    //     api.error({
-                    //         message: 'Register Failed',
-                    //         description: it,
-                    //         duration: -1,
-                    //         placement: "top"
-                    //     })
-                    // }
-                    api.error({
-                        message: 'Register Failed',
-                        description: result.errorMessage,
-                        duration: -1,
-                        placement: "top"
-                    })
+                    for (let it of result.errorMessage) {
+                        api.error({
+                            message: 'Register Failed',
+                            description: it,
+                            duration: -1,
+                            placement: "top"
+                        })
+                    }
+                    setRegistering(false);
                 }
             })
-            .catch((info) => { });
+            .catch((info) => {
+                setRegistering(false);
+            });
     }
     const testApi = async () => {
-        const res = await getAllUsers(1, 20);
+        const res = await getAllRooms(1, 20);
         console.log(res)
         api.error({
             message: 'Register Failed',
@@ -108,8 +115,9 @@ const Home: FC<HomeProps> = (props) => {
                 title="Login"
                 okText="Login"
                 cancelText="Cancel"
-                onCancel={() => setOpenLoginForm(false)}
+                onCancel={() => {setOpenLoginForm(false); setLoggingIn(false);}}
                 onOk={handleLogin}
+                confirmLoading={loggingIn}
             >
                 <Form
                     form={loginForm}
@@ -146,8 +154,9 @@ const Home: FC<HomeProps> = (props) => {
                 title="Create a new Account"
                 okText="Register"
                 cancelText="Cancel"
-                onCancel={() => setOpenRegisterForm(false)}
+                onCancel={() => {setOpenRegisterForm(false); setRegistering(false);}}
                 onOk={handleRegister}
+                confirmLoading={registering}
             >
                 <Form
                     form={registerForm}
