@@ -1,13 +1,17 @@
-import { FC } from 'react';
+import { FC, useContext } from 'react';
 import './GameMenu.css';
-import { Button, Form, Input } from 'antd';
+import { Button, Form, Input, Flex } from 'antd';
 import { AiOutlineSend } from "react-icons/ai";
+import { UserContext } from '../../helpers/Context';
+import { RoomDTO } from '../../models/Models';
+import { getTokenProperties } from '../../helpers/Helper';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
+    const { connection, roomInfo } = useContext(UserContext);
     const onFinish = (values: any) => {
         console.log('Success:', values);
     };
@@ -16,8 +20,20 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         message?: string;
     };
 
+    const handleWhenLeave = () => {
+        const yourId = getTokenProperties("nameidentifier");
+
+        const data: RoomDTO = {};
+        connection.invoke("UserLeaved", data);
+    }
+
     return (
         <div className='game-menu'>
+            <Flex wrap="wrap" gap="small">
+                <Button type="primary" danger onClick={handleWhenLeave}>
+                    Leave
+                </Button>
+            </Flex>
             <div className='players'>
                 <div className='player'>
                     <div className='player-title'>You</div>
@@ -111,8 +127,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                             name="message"
                             rules={[{ required: true, message: 'Please type your message!' }]}
                         >
-                            <Input size='small' style={{width: "100%", borderRadius: "8px"}} prefix={
-                                <Button htmlType="submit" type='link' icon={<AiOutlineSend size={22}/>} />
+                            <Input size='small' style={{ width: "100%", borderRadius: "8px" }} prefix={
+                                <Button htmlType="submit" type='link' icon={<AiOutlineSend size={22} />} />
                             } />
                         </Form.Item>
                     </Form>

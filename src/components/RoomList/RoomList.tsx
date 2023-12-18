@@ -16,7 +16,7 @@ interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
 const RoomList: FC<RoomListProps> = (props) => {
     const [roomCreationForm] = Form.useForm<RoomDTO>();
     const [step, setStep] = useContext(StepContext);
-    const { setRedirectToLogin, connection } = useContext(UserContext);
+    const { setRedirectToLogin, connection, setRoomInfo } = useContext(UserContext);
     const [listRooms, setListRooms] = useState<RoomDTO[]>();
     const [listUsers, setListUsers] = useState<UserDTO[]>();
     const [openCreateRoom, setOpenCreateRoom] = useState<boolean>(false);
@@ -25,7 +25,6 @@ const RoomList: FC<RoomListProps> = (props) => {
 
     const getListRooms = async (): Promise<void> => {
         const res = await getAllRooms();
-        console.log(res.responseData)
         if (res.isSuccess == true) {
             setListRooms(res.responseData.items);
         }
@@ -53,10 +52,14 @@ const RoomList: FC<RoomListProps> = (props) => {
             .validateFields()
             .then(async (values) => {
                 setIsCreating(true);
-                console.log(values);
                 const result = await createRoom(values);
                 if (result.code === 200 && result.isSuccess) {
                     roomCreationForm.resetFields();
+                    const roomInfo: RoomDTO = {
+                        roomOwnerId: values.roomOwnerId,
+                        name: values.name,
+                    }
+                    setRoomInfo(roomInfo);
                     setStep(3);
                     setOpenCreateRoom(false);
                     setIsCreating(false);

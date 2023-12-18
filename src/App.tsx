@@ -6,7 +6,9 @@ import { PlayerContext, StepContext, UserContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
-import { getAuthToken, isExpired, removeAuthToken } from './helpers/Helper';
+import { getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { isInRoom } from './services/UserServices';
+import { RoomDTO } from './models/Models';
 
 interface User {
   id?: string;
@@ -22,6 +24,7 @@ const App: FC = () => {
   const [step, setStep] = useState<number>(1);
   const [user, setUser] = useState<User>();
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
+  const [roomInfo, setRoomInfo] = useState<RoomDTO>();
 
   const checkIsLoggedIn = (): void => {
     const token = getAuthToken();
@@ -43,10 +46,16 @@ const App: FC = () => {
           .configureLogging(signalR.LogLevel.Information)
           .build();
 
-        hubConnection.start().then(() => {
+        hubConnection.start().then(async () => {
           setConnection(hubConnection);
           connected.current = true;
-          setStep(2);
+          const isInRoom = await checkIfIsInRoom();
+          console.log(isInRoom);
+          if(isInRoom) {
+            setStep(3);
+          } else {
+            setStep(2);
+          }
         }).catch((error) => {
           api.error({
             message: 'Login Failed',
@@ -58,6 +67,16 @@ const App: FC = () => {
       }
     } else {
       setStep(1);
+    }
+  }
+
+  const checkIfIsInRoom = async(): Promise<boolean> => {
+    const id = getTokenProperties("nameidentifier");
+    const res = await isInRoom(id);
+    if(res.isSuccess && res.responseData === true) {
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -90,7 +109,7 @@ const App: FC = () => {
   return (
     <div className='container'>
       {contextHolder}
-      <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection }}>
+      <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, roomInfo, setRoomInfo }}>
         <PlayerContext.Provider value={[player, setPlayer]}>
           <StepContext.Provider value={[step, setStep]}>
             {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}
