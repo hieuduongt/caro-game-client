@@ -1,0 +1,54 @@
+.in-room-container {
+    margin: auto;
+    border-radius: 10px;
+    box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+}
+
+.room-header {
+    padding: 10px;
+    display: flex;
+}
+
+.room-container {
+    padding: 10px;
+    display: flex;
+}
+
+@media screen and (max-width: 720px) {
+    .room-container {
+        padding: 10px;
+        display: block !important;
+    }
+
+    .list-users {
+        margin-left: 0 !important;
+        margin-top: 10px;
+        width: 100%;
+        max-width: 100% !important;
+    }
+    .room-header {
+        padding: 10px;
+        display: block !important;
+    }
+
+    .input-search-room {
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-top: 10px;
+    }
+}
+
+.list-rooms {
+    width: 100%;
+}
+
+.list-users {
+    margin-left: 10px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.input-search-room {
+    max-width: 400px;
+    margin-left: 10px;
+}

@@ -1,5 +1,5 @@
 import { LoginDTO, RegisterDTO } from "../models/Models";
-import { post, get } from "./ApiCreator";
+import { post } from "./ApiCreator";
 
 export const login = async (data: LoginDTO) => {
     const url = `https://localhost:7222/api/Authenticate/login`;

@@ -55,6 +55,27 @@
     background-color: rgb(255, 66, 66);
 }
 
+@media only screen and (max-width: 1280px) {
+    .in-game-container {
+        display: flex;
+        margin-right: 20px;
+        margin-left: 20px;
+        margin-top: 20px;
+    }
+
+    .game-introducing {
+        margin-right: 20px;
+        margin-left: 20px;
+    }
+}
+
+@media only screen and (max-width: 1140px) {
+    .game-table {
+        min-width: 300px !important;
+        width: 100% !important;
+    }
+}
+
 @keyframes blink-warning {
     0% {
         background-color: #ccc;

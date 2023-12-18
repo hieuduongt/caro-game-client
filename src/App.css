@@ -18,43 +18,16 @@
   border-radius: 6px;
 }
 
-.game-container {
-  display: flex;
+.container {
   margin: auto;
   margin-top: 20px;
   max-width: 1280px;
-  flex-direction: row-reverse;
 }
 
 @media only screen and (max-width: 1280px) {
-  .game-container {
-    display: flex;
+  .container {
     margin-right: 20px;
     margin-left: 20px;
     margin-top: 20px;
-  }
-}
-
-@media only screen and (max-width: 1140px) {
-  .game-container {
-    display: flex;
-    margin-right: 20px;
-    margin-left: 20px;
-    margin-top: 20px;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-content: center;
-    align-items: center;
-  }
-
-  .game-menu {
-    max-width: 800px;
-    margin-left: 0 !important;
-    margin-bottom: 20px;
-  }
-
-  .game-table {
-    min-width: 300px !important;
-    width: 100% !important;
   }
 }

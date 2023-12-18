@@ -1,16 +1,18 @@
-import { FC, useContext, useState } from "react";
+import { FC, useContext, useEffect, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
 import { StepContext } from "../../helpers/Context";
 import { login, register } from "../../services/AuthServices";
 import { getAllRooms } from "../../services/RoomServices";
+import { setAuthToken } from "../../helpers/Helper";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
-
+    redirectToLogin?: boolean;
 }
 
 const Home: FC<HomeProps> = (props) => {
+    const { redirectToLogin } = props;
     const [api, contextHolder] = notification.useNotification();
     const [step, setStep] = useContext(StepContext);
     const [loginForm] = Form.useForm();
@@ -20,6 +22,14 @@ const Home: FC<HomeProps> = (props) => {
     const [openRegisterForm, setOpenRegisterForm] = useState<boolean>(false);
     const [registering, setRegistering] = useState<boolean>(false);
 
+    useEffect(() => {
+        if (redirectToLogin) {
+            setOpenLoginForm(true);
+        } else {
+            setOpenLoginForm(false);
+        }
+    }, [redirectToLogin]);
+
     const handleLogin = () => {
         loginForm
             .validateFields()
@@ -28,10 +38,10 @@ const Home: FC<HomeProps> = (props) => {
                 const result = await login(values);
                 if (result.code === 200 && result.isSuccess) {
                     loginForm.resetFields();
-                    sessionStorage.setItem("authToken", result.responseData);
-                    setStep(2);
+                    setAuthToken(result.responseData);
                     setOpenLoginForm(false);
                     setLoggingIn(false);
+                    setStep(2);
                 } else {
                     for (let it of result.errorMessage) {
                         api.error({
@@ -80,6 +90,7 @@ const Home: FC<HomeProps> = (props) => {
                 setRegistering(false);
             });
     }
+
     const testApi = async () => {
         const res = await getAllRooms(1, 20);
         console.log(res)
@@ -108,16 +119,29 @@ const Home: FC<HomeProps> = (props) => {
             </div>
 
             <div className="game-introducing">
-                Hey man
+                <div className="game-description">
+                    - Caro, also known as Gomoku+, was the oldest logic board game in the world. <br/>
+                    - The game has extremely simple rules but requires careful tactics, which makes Caro well-loved by many people, especially students and office workers.<br/>
+                    - Caro isn’t just pure entertainment but an exciting intellectual battle, helping to train logical thinking and increase your IQ. <br/>
+                    - Join Caro and beat the opponents to show your level.<br/>
+                    ⁂ How to play:<br/>
+                    - Each player uses an X or O letter, which are Caro pieces.<br/>
+                    - The players will in turn fill the grid with their letter.<br/>
+                    - The winner is the person who gets 5 in a row (horizontal, vertical, or diagonal) first.
+                </div>
+                <div className="game-images">
+                    <img src="caro.png" alt="" />
+                </div>
             </div>
             <Modal
                 open={openLoginForm}
                 title="Login"
                 okText="Login"
                 cancelText="Cancel"
-                onCancel={() => {setOpenLoginForm(false); setLoggingIn(false);}}
+                onCancel={() => { setOpenLoginForm(false); setLoggingIn(false); }}
                 onOk={handleLogin}
                 confirmLoading={loggingIn}
+                okButtonProps={{htmlType: "submit"}}
             >
                 <Form
                     form={loginForm}
@@ -154,9 +178,10 @@ const Home: FC<HomeProps> = (props) => {
                 title="Create a new Account"
                 okText="Register"
                 cancelText="Cancel"
-                onCancel={() => {setOpenRegisterForm(false); setRegistering(false);}}
+                onCancel={() => { setOpenRegisterForm(false); setRegistering(false); }}
                 onOk={handleRegister}
                 confirmLoading={registering}
+                okButtonProps={{htmlType: "submit"}}
             >
                 <Form
                     form={registerForm}

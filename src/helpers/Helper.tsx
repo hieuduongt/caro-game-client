@@ -1,10 +1,19 @@
 import { CellValue } from "../components/GameGrid/GameGrid";
+import { jwtDecode } from "jwt-decode";
 
 interface ReturnResult {
     winner: string;
     listCoordinates: CellValue[];
 }
-export const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, checkingPlayer: string) : ReturnResult => {
+
+interface DecodedToken {
+    exp?: string | number | string[];
+    role?: string | number | string[],
+    name?: string | number | string[];
+    nameidentifier?: string | number | string[];
+}
+
+const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, checkingPlayer: string): ReturnResult => {
     const result: ReturnResult = {
         winner: "",
         listCoordinates: []
@@ -96,3 +105,73 @@ const getPointValue = (gameboard: Array<Array<CellValue>>, x: number, y: number)
         return "";
     }
 }
+
+const getAuthToken = (): string => {
+    const tokenString = localStorage.getItem('authToken');
+    return tokenString || "";
+};
+
+const setAuthToken = (authToken: string): void => {
+    localStorage.setItem('authToken', authToken);
+};
+
+const removeAuthToken = (): void => {
+    localStorage.removeItem('authToken');
+};
+
+const getTokenProperties = (name?: "exp" | "role" | "nameidentifier" | "name"): any => {
+    const token = getAuthToken();
+    
+    if (token) {
+        const result: DecodedToken = {
+            exp: undefined,
+            name: "",
+            nameidentifier: "",
+            role: ""
+        };
+        const decoded = jwtDecode(token);
+        type TokenKey = keyof typeof result;
+        type ObjectKey = keyof typeof decoded;
+        const objKeys = Object.keys(decoded);
+        for (const it of objKeys) {
+            if(/^exp$/g.test(it)) result.exp =  decoded[it as ObjectKey];
+            if(/\/role$/g.test(it)) result.role = decoded[it as ObjectKey];
+            if(/\/nameidentifier$/g.test(it)) result.nameidentifier = decoded[it as ObjectKey];
+            if(/\/name$/g.test(it)) result.name = decoded[it as ObjectKey];  
+        }
+        if(name) {
+            return result[name as TokenKey];
+        } else {
+            return result;
+        }
+    }
+    return "";
+}
+
+const compareRole = (roles: string, currentRole: string): boolean => {
+    let valid = false;
+    if (Array.isArray(roles) && typeof currentRole === 'string') {
+        roles.forEach(role => {
+            if (role === currentRole) valid = true;
+        })
+    } else if (typeof roles === 'string' && typeof currentRole === 'string') {
+        if (roles === currentRole) valid = true;
+    } else {
+        throw new Error("Your data is not valid")
+    }
+    return valid;
+}
+
+const isExpired = (): boolean => {
+    const token = getAuthToken();
+    if (token) {
+        var decoded = jwtDecode(token);
+        const expireDate = decoded["exp"];
+        const date = new Date(expireDate? (expireDate * 1000) : "");
+        const today = new Date();
+        return date < today;
+    }
+    return false;
+}
+
+export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner }

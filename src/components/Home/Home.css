@@ -18,4 +18,33 @@
     min-height: 50px;
     border-radius: 10px;
     box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+    display: flex;
+}
+
+.game-description {
+    line-height: 1.38462;
+    font-weight: 400;
+    letter-spacing: -.005em;
+    min-width: 300px;
+}
+
+.game-images {
+    height: 100%;
+    margin-left: 20px;
+}
+
+.game-images > img {
+    max-height: 350px;
+}
+
+@media screen and (max-width: 720px) {
+    .game-introducing {
+        display: block !important;
+    }
+    .game-images {
+        margin-top: 10px;
+    }
+    .game-images > img {
+        width: 100%;
+    }
 }
