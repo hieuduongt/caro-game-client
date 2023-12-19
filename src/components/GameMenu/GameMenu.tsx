@@ -47,7 +47,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         connection.on("UserJoined", (user: UserDTO): void => {
             console.log("user joined", user)
             setMessages((prev) => {
-                const newMess: Message[] = [...prev!];
+                const newMess: Message[] = prev && prev?.length ? [...prev] : [];
                 const mess: Message = {
                     userId: user.id,
                     userName: user.userName,

@@ -9,7 +9,6 @@ import RoomList from './components/RoomList/RoomList';
 import { getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { RoomDTO, UserDTO } from './models/Models';
-import { getRoom } from './services/RoomServices';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -35,10 +34,10 @@ const App: FC = () => {
             accessTokenFactory: () => getAuthToken(),
             skipNegotiation: true,
             transport: signalR.HttpTransportType.WebSockets,
-            withCredentials: true,
+            withCredentials: true
           })
           .withAutomaticReconnect()
-          .configureLogging(signalR.LogLevel.Information)
+          .configureLogging(signalR.LogLevel.Debug)
           .build();
 
         hubConnection.start().then(async () => {
@@ -57,6 +56,25 @@ const App: FC = () => {
             duration: -1,
             placement: "top"
           });
+        });
+
+        hubConnection.on("UserLeaved", (mess) => {
+          console.log(mess);
+        });
+        hubConnection.on("SetOwner", (data) => {
+          console.log(data);
+        });
+        hubConnection.on("WelComeMessage", (mess) => {
+          console.log(mess);
+        });
+        hubConnection.on("UserLoggedIn", (data) => {
+          console.log(data);
+        });
+        hubConnection.on("UserLoggedOut", (data) => {
+          console.log(data);
+        });
+        hubConnection.on("UserJoined", (user): void => {
+          console.log("user joined", user)
         });
       }
     } else {
@@ -93,25 +111,28 @@ const App: FC = () => {
     checkIsLoggedIn();
   }, []);
 
-  useEffect(() => {
-    if (connection) {
-      connection.on("UserLeaved", (mess) => {
-        console.log(mess);
-      });
-      connection.on("SetOwner", (data) => {
-        console.log(data);
-      });
-      connection.on("WelComeMessage", (mess) => {
-        console.log(mess);
-      });
-      connection.on("UserLoggedIn", (data) => {
-        console.log(data);
-      });
-      connection.on("UserLoggedOut", (data) => {
-        console.log(data);
-      });
-    }
-  }, [connection])
+  // useEffect(() => {
+  //   if (connection) {
+  //     connection.on("UserLeaved", (mess) => {
+  //       console.log(mess);
+  //     });
+  //     connection.on("SetOwner", (data) => {
+  //       console.log(data);
+  //     });
+  //     connection.on("WelComeMessage", (mess) => {
+  //       console.log(mess);
+  //     });
+  //     connection.on("UserLoggedIn", (data) => {
+  //       console.log(data);
+  //     });
+  //     connection.on("UserLoggedOut", (data) => {
+  //       console.log(data);
+  //     });
+  //     connection.on("UserJoined", (user: UserDTO): void => {
+  //       console.log("user joined", user)
+  //     });
+  //   }
+  // }, [connection])
 
   return (
     <div className='container'>

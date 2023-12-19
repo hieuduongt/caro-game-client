@@ -1,5 +1,5 @@
 import { ResponseData, UserDTO } from "../models/Models";
-import { get, post } from "./ApiCreator";
+import { get } from "./ApiCreator";
 
 export const getUser = async (id: string) : Promise<ResponseData<UserDTO>> => {
     const url = `https://localhost:7222/api/User/${id}`;

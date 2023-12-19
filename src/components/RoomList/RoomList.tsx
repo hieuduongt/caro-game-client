@@ -90,6 +90,7 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
+        console.log(user)
         const currentRoom: RoomDTO = {
             id: room.id,
             name: room.name,
