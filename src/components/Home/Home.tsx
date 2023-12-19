@@ -92,7 +92,7 @@ const Home: FC<HomeProps> = (props) => {
     }
 
     const testApi = async () => {
-        const res = await getAllRooms(1, 20);
+        const res = await getAllRooms("", 1, 20);
         console.log(res)
         api.error({
             message: 'Register Failed',

@@ -3,10 +3,11 @@ import './RoomList.css';
 import { Modal, Form, Button, List, Input, notification } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { PlusOutlined } from '@ant-design/icons';
-import { ResponseData, RoomDTO, UserDTO } from "../../models/Models";
-import { createRoom, getAllRooms } from "../../services/RoomServices";
+import { AccountStatus, ResponseData, RoomDTO, UserDTO } from "../../models/Models";
+import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
 import { StepContext, UserContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
+import { getAllUsers } from "../../services/UserServices";
 const { Search } = Input;
 
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -16,15 +17,15 @@ interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
 const RoomList: FC<RoomListProps> = (props) => {
     const [roomCreationForm] = Form.useForm<RoomDTO>();
     const [step, setStep] = useContext(StepContext);
-    const { setRedirectToLogin, connection, setRoomInfo } = useContext(UserContext);
+    const { setRedirectToLogin, connection, setRoomInfo, user, setUser } = useContext(UserContext);
     const [listRooms, setListRooms] = useState<RoomDTO[]>();
     const [listUsers, setListUsers] = useState<UserDTO[]>();
     const [openCreateRoom, setOpenCreateRoom] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
-    const [api, contextHolder] = notification.useNotification()
+    const [api, contextHolder] = notification.useNotification();
 
     const getListRooms = async (): Promise<void> => {
-        const res = await getAllRooms();
+        const res = await getAllRooms("", 1, 20);
         if (res.isSuccess == true) {
             setListRooms(res.responseData.items);
         }
@@ -34,20 +35,31 @@ const RoomList: FC<RoomListProps> = (props) => {
         }
     }
 
+    const getListUsers = async (): Promise<void> => {
+        const res = await getAllUsers("", 1, 20);
+        if (res.isSuccess == true) {
+            setListUsers(res.responseData.items);
+        }
+        if (res.isSuccess == false && res.code == 401) {
+            setStep(1);
+            setRedirectToLogin(true);
+        }
+    }
+
     useEffect(() => {
         getListRooms();
+        getListUsers();
     }, []);
 
     useEffect(() => {
         if (connection) {
-            connection.on("RoomCreated", async (mess: string) => {
-                console.log(mess);
-                await getAllRooms();
+            connection.on("RoomCreated", async () => {
+                await getListRooms();
             });
         }
     }, [connection]);
 
-    const handleCreate = () => {
+    const handleCreate = async (): Promise<void> => {
         roomCreationForm
             .validateFields()
             .then(async (values) => {
@@ -55,10 +67,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 const result = await createRoom(values);
                 if (result.code === 200 && result.isSuccess) {
                     roomCreationForm.resetFields();
-                    const roomInfo: RoomDTO = {
-                        roomOwnerId: values.roomOwnerId,
-                        name: values.name,
-                    }
+                    const roomInfo: RoomDTO = result.responseData;
                     setRoomInfo(roomInfo);
                     setStep(3);
                     setOpenCreateRoom(false);
@@ -80,6 +89,22 @@ const RoomList: FC<RoomListProps> = (props) => {
             });
     }
 
+    const handleJoin = async (room: RoomDTO): Promise<void> => {
+        const currentRoom: RoomDTO = {
+            id: room.id,
+            name: room.name,
+            guestId: user.id
+        }
+        const newUser: UserDTO = user;
+        newUser.roomId = room.id;
+        setUser(newUser);
+        const res = await joinRoom(currentRoom);
+        console.log(res);
+        if(res.isSuccess) {
+            setStep(3);
+        }
+    }
+
     return (
         <div className='in-room-container'>
             {contextHolder}
@@ -92,18 +117,42 @@ const RoomList: FC<RoomListProps> = (props) => {
             <div className="room-container">
                 <div className="list-rooms">
                     <List
+                        style={{ minHeight: "100%" }}
                         size="small"
                         bordered
-                        dataSource={listRooms||[]}
-                        renderItem={(item) => <List.Item>{item.name}</List.Item>}
+                        dataSource={listRooms || []}
+                        renderItem={(item) =>
+                            <List.Item
+                                actions={[
+                                    <Button type="primary" size="large" onClick={() => handleJoin(item)}>
+                                        Join
+                                    </Button>
+                                ]}
+                            >
+                                <List.Item.Meta
+                                    title={<a href="">{item.name}</a>}
+                                    description={`Joined Members: ${item.numberOfUsers}`}
+                                />
+                                <div>Owner: <b style={{ color: "#1677ff" }}>{item.members?.find(m => m.id === item.roomOwnerId)?.userName}</b></div>
+                            </List.Item>
+                        }
                     />
                 </div>
                 <div className="list-users">
                     <List
+                        style={{ minHeight: "100%" }}
                         size="small"
                         bordered
-                        dataSource={[]}
-                        renderItem={(item) => <List.Item>{item}</List.Item>}
+                        dataSource={listUsers || []}
+                        renderItem={(item) =>
+                            <List.Item>
+                                <List.Item.Meta
+                                    title={<a href="">{item.userName}</a>}
+                                    description={`Role: ${item.role}`}
+                                />
+                                <div>Status: <b style={{ color: "#1677ff" }}>{AccountStatus[item.status]}</b></div>
+                            </List.Item>
+                        }
                     />
                 </div>
             </div>

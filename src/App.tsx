@@ -7,14 +7,9 @@ import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
-import { isInRoom } from './services/UserServices';
-import { RoomDTO } from './models/Models';
-
-interface User {
-  id?: string;
-  userName?: string;
-  token?: string;
-}
+import { getUser } from './services/UserServices';
+import { RoomDTO, UserDTO } from './models/Models';
+import { getRoom } from './services/RoomServices';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -22,7 +17,7 @@ const App: FC = () => {
   const connected = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
   const [step, setStep] = useState<number>(1);
-  const [user, setUser] = useState<User>();
+  const [user, setUser] = useState<UserDTO>();
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
 
@@ -50,8 +45,7 @@ const App: FC = () => {
           setConnection(hubConnection);
           connected.current = true;
           const isInRoom = await checkIfIsInRoom();
-          console.log(isInRoom);
-          if(isInRoom) {
+          if (isInRoom) {
             setStep(3);
           } else {
             setStep(2);
@@ -70,14 +64,27 @@ const App: FC = () => {
     }
   }
 
-  const checkIfIsInRoom = async(): Promise<boolean> => {
+  const checkIfIsInRoom = async (): Promise<boolean> => {
     const id = getTokenProperties("nameidentifier");
-    const res = await isInRoom(id);
-    if(res.isSuccess && res.responseData === true) {
-      return true;
-    } else {
-      return false;
+    const res = await getUser(id);
+    if (res.isSuccess && res.responseData) {
+      const currentUser: UserDTO = {
+        id: res.responseData.id,
+        userName: res.responseData.userName,
+        roomId: res.responseData.roomId,
+        email: res.responseData.email,
+        isRoomOwner: res.responseData.isRoomOwner,
+        role: res.responseData.role,
+        sitting: res.responseData.sitting,
+        status: res.responseData.status,
+        createdDate: res.responseData.createdDate,
+        isEditBy: res.responseData.isEditBy,
+        lastActiveDate: res.responseData.lastActiveDate
+      }
+      setUser(currentUser);
+      return res.responseData.roomId;
     }
+    return false;
   }
 
   useEffect((): any => {

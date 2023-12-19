@@ -17,6 +17,16 @@
   width: 100%;
 }
 
+.joined {
+  border: 2px solid #52c41a;
+  color: #52c41a;
+}
+
+.current-user {
+  border: 2px solid #1677ff;
+  color: #1677ff;
+}
+
 .player-title {
   text-align: center;
   font-weight: 600;

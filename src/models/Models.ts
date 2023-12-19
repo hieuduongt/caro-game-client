@@ -10,13 +10,6 @@ export interface RegisterDTO {
     rePassword: string;
 }
 
-// export interface ResponseData {
-//     code: number;
-//     errorMessage: string[];
-//     responseData: any;
-//     isSuccess: Boolean;
-// }
-
 export interface ResponseData<T> {
     code: number;
     errorMessage: string[];
@@ -38,10 +31,11 @@ export enum AccountStatus {
 export interface RoomDTO {
     id: string;
     name: string;
-    roomOwnerId: string
-    guestId: string;
-    status: Status;
-    numberOfUsers: number;
+    roomOwnerId?: string
+    guestId?: string;
+    status?: Status;
+    numberOfUsers?: number;
+    members?: UserDTO[];
 }
 
 export interface UserDTO {
@@ -56,4 +50,12 @@ export interface UserDTO {
     createdDate: Date;
     lastActiveDate: Date;
     isEditBy: string;
+}
+
+export interface Message {
+    userId: string;
+    userName: string;
+    message: string;
+    isMyMessage: boolean;
+
 }
