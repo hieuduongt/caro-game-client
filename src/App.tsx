@@ -51,7 +51,7 @@ const App: FC = () => {
           }
         }).catch((error) => {
           api.error({
-            message: 'Login Failed',
+            message: 'Connect Failed',
             description: error,
             duration: -1,
             placement: "top"
@@ -93,33 +93,10 @@ const App: FC = () => {
     checkIsLoggedIn();
   }, []);
 
-  // useEffect(() => {
-  //   if (connection) {
-  //     connection.on("UserLeaved", (mess) => {
-  //       console.log(mess);
-  //     });
-  //     connection.on("SetOwner", (data) => {
-  //       console.log(data);
-  //     });
-  //     connection.on("WelComeMessage", (mess) => {
-  //       console.log(mess);
-  //     });
-  //     connection.on("UserLoggedIn", (data) => {
-  //       console.log(data);
-  //     });
-  //     connection.on("UserLoggedOut", (data) => {
-  //       console.log(data);
-  //     });
-  //     connection.on("UserJoined", (user: UserDTO): void => {
-  //       console.log("user joined", user)
-  //     });
-  //   }
-  // }, [connection])
-
   return (
     <div className='container'>
       {contextHolder}
-      <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, roomInfo, setRoomInfo }}>
+      <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo }}>
         <PlayerContext.Provider value={[player, setPlayer]}>
           <StepContext.Provider value={[step, setStep]}>
             {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}

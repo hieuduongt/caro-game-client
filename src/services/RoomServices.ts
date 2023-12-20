@@ -8,7 +8,7 @@ export const getAllRooms = async (search?: string, page?: number, pageSize?: num
 
 export const getRoom = async (id: string) : Promise<ResponseData<RoomDTO>> => {
     const url = `https://localhost:7222/api/Game/room/${id}`;
-    return get(url);
+    return get<RoomDTO>(url);
 }
 
 export const joinRoom = async (data: RoomDTO) : Promise<ResponseData<undefined>> => {

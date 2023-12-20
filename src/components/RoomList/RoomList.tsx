@@ -48,7 +48,6 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     useEffect(() => {
-        if(cLoaded.current) return;
         getListRooms();
         getListUsers();
     }, []);
@@ -66,8 +65,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 await getListUsers();
             });
 
-            connection.on("RoomClosed", async () => {
-                console.log("room closed")
+            connection.on("RoomClosed", async (id: string) => {
                 await getListRooms();
             });
         }
@@ -83,6 +81,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     roomCreationForm.resetFields();
                     const roomInfo: RoomDTO = result.responseData;
+                    setUser({...user, roomId: roomInfo.id, isRoomOwner: true, sitting: true, isOnline: true});
                     setRoomInfo(roomInfo);
                     setStep(3);
                     setOpenCreateRoom(false);

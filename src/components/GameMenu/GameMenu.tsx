@@ -5,6 +5,7 @@ import { AiOutlineSend } from "react-icons/ai";
 import { StepContext, UserContext } from '../../helpers/Context';
 import { Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
+import { updateUserSlot } from '../../services/UserServices';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
@@ -22,65 +23,84 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         const currentRoom = await getRoom(user.roomId);
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
+            const guest = currentRoom.responseData.members.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
+            if (guest) {
+                setGuest(guest);
+            } else {
+                setGuest(undefined);
+            }
         }
     }
-    
+
     useEffect(() => {
-        if (cLoaded.current) return;
-        if (!roomInfo) {
-            getRoomInfo();
-        }
-    }, [roomInfo]);
+        getRoomInfo();
+    }, []);
 
     useEffect(() => {
         if (cLoaded.current) return;
-        connection.on("RoomOwnerChanged", (id: string): void => {
-            console.log(id);
-            const areYouOwner: boolean = user.id === id;
-            console.log(areYouOwner);
-            if (areYouOwner) {
 
-            }
-        });
-
-        connection.on("UserLeaved", (id: string): void => {
-            console.log("user id leaved", id);
-        });
-
-        connection.on("UserJoined", (user: UserDTO): void => {
+        connection.on("UserLeaved", async (userName: string): Promise<void> => {
             setMessages((prev) => {
                 const newMess: Message[] = prev && prev?.length ? [...prev] : [];
                 const mess: Message = {
                     userId: user.id,
-                    userName: user.userName,
+                    userName: "",
                     isMyMessage: false,
-                    message: `${user.userName} joined`
+                    message: `${userName} Leaved`
                 }
                 newMess.push(mess);
                 return newMess;
-            })
-        });
-
-        connection.on("RoomOwnerChanged", (id: string): void => {
-            setRoomInfo((prev: RoomDTO) => {
-                const newRoomInfo: RoomDTO = { ...prev };
-                const newMembers = newRoomInfo.members?.filter(m => !m.isRoomOwner);
-                newMembers?.forEach(nm => {
-                    if(nm.id === id) {
-                        nm.isRoomOwner = true;
-                    }
-                });
-                newRoomInfo.members = newMembers;
-                return newRoomInfo;
             });
+            await getRoomInfo();
         });
 
-        connection.on("RoomClosed", (): void => {
-            setStep(2);
-            setRoomInfo(undefined);
+        connection.on("UserSitted", async (): Promise<void> => {
+            await getRoomInfo();
+        });
+
+        connection.on("UserJoined", async (userName: string): Promise<void> => {
+            setMessages((prev) => {
+                const newMess: Message[] = prev && prev?.length ? [...prev] : [];
+                const mess: Message = {
+                    userId: user.id,
+                    userName: "",
+                    isMyMessage: false,
+                    message: `${userName} joined`
+                }
+                newMess.push(mess);
+                return newMess;
+            });
+            await getRoomInfo();
+        });
+
+        connection.on("RoomOwnerChanged", async (id: string): Promise<void> => {
+            changeOwner(id);
+            await getRoomInfo();
+        });
+
+        connection.on("RoomClosed", (id: string): void => {
+            onRoomClosed(id);
         });
         cLoaded.current = true;
     }, []);
+
+    const onRoomClosed = (id: string): void => {
+        if (roomInfo.id === id) {
+            setStep(2);
+            setRoomInfo(undefined);
+        }
+    }
+
+    const changeOwner = (id: string): void => {
+        if (id === user.id) {
+            api.info({
+                message: 'Info',
+                description: "the Room owner is quit, now you are room owner",
+                duration: 5,
+                placement: "top"
+            });
+        }
+    }
 
     const onFinish = (values: any) => {
         console.log('Success:', values);
@@ -119,7 +139,51 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 placement: "top"
             });
         }
+    }
 
+    const handleWhenSitting = async () => {
+        console.log(user);
+        if (user.isRoomOwner) {
+            api.error({
+                message: 'Error',
+                description: "You are the room owner, you cannot sit in the guest slot!",
+                duration: 3,
+                placement: "top"
+            });
+        } else {
+            if (!guest) {
+                const res = await updateUserSlot(user.id, true);
+                if (res.isSuccess) {
+                    setGuest(user);
+                } else {
+                    api.error({
+                        message: 'Error',
+                        description: res.errorMessage,
+                        duration: 3,
+                        placement: "top"
+                    });
+                }
+            } else if (guest.id === user.id) {
+                const res = await updateUserSlot(user.id, false);
+                if (res.isSuccess) {
+                    setGuest(user);
+                } else {
+                    api.error({
+                        message: 'Error',
+                        description: res.errorMessage,
+                        duration: 3,
+                        placement: "top"
+                    });
+                }
+            } else {
+                api.error({
+                    message: 'Error',
+                    description: "Already have user",
+                    duration: 3,
+                    placement: "top"
+                });
+            }
+        }
     }
 
     return (
@@ -148,7 +212,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 </div>
                 <div className="player">
                     <div className='player-title'>Competitor</div>
-                    <div className={`player-info ${guest ? "joined" : ""}`}>
+                    <div className={`slot ${user.isRoomOwner ? "full" : ""} ${guest ? "joined" : ""} player-info ${guest ? "joined" : ""}`} onClick={handleWhenSitting}>
                         <div className='info'>
                             <div className='avatar'>
                                 <img src="human.jpg" alt="" />
@@ -168,8 +232,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                     <div className='chat-messages'>
                         {
                             messages?.map((mess, i) => (
-                                <div id={mess.userId + i} className={mess.isMyMessage ? "my-message" : "message"}>
-                                    <b>{mess.userName}: </b>{mess.message}
+                                <div id={mess.userId + "-mess-" + i} className={mess.isMyMessage ? "my-message" : "message"}>
+                                    <b>{mess.userName} </b>{mess.message}
                                 </div>
                             ))
                         }

@@ -2,15 +2,14 @@ import axios, { AxiosError } from "axios";
 import { ResponseData } from "../models/Models";
 import { getAuthToken } from "../helpers/Helper";
 
-const apiCaller = axios.create({
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${getAuthToken()}`
-    }
-});
-
 
 export const post = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+    const apiCaller = axios.create({
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    });
     try {
         const res = await apiCaller.post<ResponseData<T>>(url, data);
         if (res.status === 200) {
@@ -37,6 +36,12 @@ export const post = async<T> (url: string, data?: any): Promise<ResponseData<T>>
 }
 
 export const get = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+    const apiCaller = axios.create({
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    });
     try {
         const res = await apiCaller.get<ResponseData<T>>(url, data!);
         if (res.status === 200) {
@@ -63,6 +68,12 @@ export const get = async<T> (url: string, data?: any): Promise<ResponseData<T>> 
 }
 
 export const put = async<T> (url: string, data: any): Promise<ResponseData<T>> => {
+    const apiCaller = axios.create({
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    });
     try {
         const res = await apiCaller.put<ResponseData<T>>(url, data);
         if (res.status === 200) {
@@ -89,6 +100,12 @@ export const put = async<T> (url: string, data: any): Promise<ResponseData<T>> =
 }
 
 export const deleteR = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+    const apiCaller = axios.create({
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    });
     try {
         const res = await apiCaller.delete<ResponseData<T>>(url, data);
         if (res.status === 200) {

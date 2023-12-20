@@ -2,10 +2,13 @@ import { FC, useContext, useEffect, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
-import { StepContext } from "../../helpers/Context";
+import { StepContext, UserContext } from "../../helpers/Context";
 import { login, register } from "../../services/AuthServices";
 import { getAllRooms } from "../../services/RoomServices";
-import { setAuthToken } from "../../helpers/Helper";
+import { getAuthToken, getTokenProperties, setAuthToken } from "../../helpers/Helper";
+import { UserDTO } from "../../models/Models";
+import { getUser } from "../../services/UserServices";
+import * as signalR from "@microsoft/signalr";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
@@ -14,6 +17,7 @@ interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
 const Home: FC<HomeProps> = (props) => {
     const { redirectToLogin } = props;
     const [api, contextHolder] = notification.useNotification();
+    const { setUser, setConnection } = useContext(UserContext);
     const [step, setStep] = useContext(StepContext);
     const [loginForm] = Form.useForm();
     const [registerForm] = Form.useForm();
@@ -39,9 +43,33 @@ const Home: FC<HomeProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     loginForm.resetFields();
                     setAuthToken(result.responseData);
-                    setOpenLoginForm(false);
-                    setLoggingIn(false);
-                    setStep(2);
+                    const hubConnection = new signalR.HubConnectionBuilder()
+                        .withUrl("https://localhost:7222/connection/hub/game", {
+                            accessTokenFactory: () => getAuthToken(),
+                            skipNegotiation: true,
+                            transport: signalR.HttpTransportType.WebSockets,
+                            withCredentials: true
+                        })
+                        .withAutomaticReconnect()
+                        .configureLogging(signalR.LogLevel.Debug)
+                        .build();
+
+                    hubConnection.start().then(async () => {
+                        setConnection(hubConnection);
+                        const isInRoom = await checkIfIsInRoom();
+                        if (isInRoom) {
+                            setStep(3);
+                        } else {
+                            setStep(2);
+                        }
+                    }).catch((error) => {
+                        api.error({
+                            message: 'Connect Failed',
+                            description: error,
+                            duration: -1,
+                            placement: "top"
+                        });
+                    });
                 } else {
                     for (let it of result.errorMessage) {
                         api.error({
@@ -57,6 +85,30 @@ const Home: FC<HomeProps> = (props) => {
             .catch((info) => {
                 setLoggingIn(false);
             });
+    }
+
+    const checkIfIsInRoom = async (): Promise<boolean> => {
+        const id = getTokenProperties("nameidentifier");
+        const res = await getUser(id);
+        if (res.isSuccess && res.responseData) {
+            const currentUser: UserDTO = {
+                id: res.responseData.id,
+                userName: res.responseData.userName,
+                roomId: res.responseData.roomId,
+                email: res.responseData.email,
+                isRoomOwner: res.responseData.isRoomOwner,
+                role: res.responseData.role,
+                sitting: res.responseData.sitting,
+                status: res.responseData.status,
+                createdDate: res.responseData.createdDate,
+                isEditBy: res.responseData.isEditBy,
+                lastActiveDate: res.responseData.lastActiveDate,
+                isOnline: res.responseData.isOnline
+            }
+            setUser(currentUser);
+            return res.responseData.roomId;
+        }
+        return false;
     }
 
     const handleRegister = () => {
@@ -91,16 +143,6 @@ const Home: FC<HomeProps> = (props) => {
             });
     }
 
-    const testApi = async () => {
-        const res = await getAllRooms("", 1, 20);
-        console.log(res)
-        api.error({
-            message: 'Register Failed',
-            description: res.errorMessage,
-            duration: -1,
-            placement: "top"
-        })
-    }
     return (
         <div className='home'>
             {contextHolder}
@@ -112,7 +154,7 @@ const Home: FC<HomeProps> = (props) => {
                     <Button type="default" icon={<UserAddOutlined />} size={"large"} onClick={() => setOpenRegisterForm(true)}>
                         Register
                     </Button>
-                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => testApi()}>
+                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => { }}>
                         Play as guest
                     </Button>
                 </Flex>
@@ -120,13 +162,13 @@ const Home: FC<HomeProps> = (props) => {
 
             <div className="game-introducing">
                 <div className="game-description">
-                    - Caro, also known as Gomoku+, was the oldest logic board game in the world. <br/>
-                    - The game has extremely simple rules but requires careful tactics, which makes Caro well-loved by many people, especially students and office workers.<br/>
-                    - Caro isn’t just pure entertainment but an exciting intellectual battle, helping to train logical thinking and increase your IQ. <br/>
-                    - Join Caro and beat the opponents to show your level.<br/>
-                    ⁂ How to play:<br/>
-                    - Each player uses an X or O letter, which are Caro pieces.<br/>
-                    - The players will in turn fill the grid with their letter.<br/>
+                    - Caro, also known as Gomoku+, was the oldest logic board game in the world. <br />
+                    - The game has extremely simple rules but requires careful tactics, which makes Caro well-loved by many people, especially students and office workers.<br />
+                    - Caro isn’t just pure entertainment but an exciting intellectual battle, helping to train logical thinking and increase your IQ. <br />
+                    - Join Caro and beat the opponents to show your level.<br />
+                    ⁂ How to play:<br />
+                    - Each player uses an X or O letter, which are Caro pieces.<br />
+                    - The players will in turn fill the grid with their letter.<br />
                     - The winner is the person who gets 5 in a row (horizontal, vertical, or diagonal) first.
                 </div>
                 <div className="game-images">
@@ -141,7 +183,7 @@ const Home: FC<HomeProps> = (props) => {
                 onCancel={() => { setOpenLoginForm(false); setLoggingIn(false); }}
                 onOk={handleLogin}
                 confirmLoading={loggingIn}
-                okButtonProps={{htmlType: "submit"}}
+                okButtonProps={{ htmlType: "submit" }}
             >
                 <Form
                     form={loginForm}
@@ -181,7 +223,7 @@ const Home: FC<HomeProps> = (props) => {
                 onCancel={() => { setOpenRegisterForm(false); setRegistering(false); }}
                 onOk={handleRegister}
                 confirmLoading={registering}
-                okButtonProps={{htmlType: "submit"}}
+                okButtonProps={{ htmlType: "submit" }}
             >
                 <Form
                     form={registerForm}
