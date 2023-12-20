@@ -13,7 +13,7 @@ import { RoomDTO, UserDTO } from './models/Models';
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
   const [player, setPlayer] = useState<string>("playerX");
-  const connected = useRef<boolean>(false);
+  const cLoaded = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
   const [step, setStep] = useState<number>(1);
   const [user, setUser] = useState<UserDTO>();
@@ -42,7 +42,7 @@ const App: FC = () => {
 
         hubConnection.start().then(async () => {
           setConnection(hubConnection);
-          connected.current = true;
+          cLoaded.current = true;
           const isInRoom = await checkIfIsInRoom();
           if (isInRoom) {
             setStep(3);
@@ -56,25 +56,6 @@ const App: FC = () => {
             duration: -1,
             placement: "top"
           });
-        });
-
-        hubConnection.on("UserLeaved", (mess) => {
-          console.log(mess);
-        });
-        hubConnection.on("SetOwner", (data) => {
-          console.log(data);
-        });
-        hubConnection.on("WelComeMessage", (mess) => {
-          console.log(mess);
-        });
-        hubConnection.on("UserLoggedIn", (data) => {
-          console.log(data);
-        });
-        hubConnection.on("UserLoggedOut", (data) => {
-          console.log(data);
-        });
-        hubConnection.on("UserJoined", (user): void => {
-          console.log("user joined", user)
         });
       }
     } else {
@@ -97,7 +78,8 @@ const App: FC = () => {
         status: res.responseData.status,
         createdDate: res.responseData.createdDate,
         isEditBy: res.responseData.isEditBy,
-        lastActiveDate: res.responseData.lastActiveDate
+        lastActiveDate: res.responseData.lastActiveDate,
+        isOnline: res.responseData.isOnline
       }
       setUser(currentUser);
       return res.responseData.roomId;
@@ -106,7 +88,7 @@ const App: FC = () => {
   }
 
   useEffect((): any => {
-    if (connected.current)
+    if (cLoaded.current)
       return
     checkIsLoggedIn();
   }, []);

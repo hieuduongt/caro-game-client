@@ -1,6 +1,6 @@
-import { FC, useContext, useEffect, useState } from 'react';
+import { FC, useContext, useEffect, useRef, useState } from 'react';
 import './GameMenu.css';
-import { Button, Form, Input, Flex } from 'antd';
+import { Button, Form, Input, Flex, notification } from 'antd';
 import { AiOutlineSend } from "react-icons/ai";
 import { StepContext, UserContext } from '../../helpers/Context';
 import { Message, RoomDTO, UserDTO } from '../../models/Models';
@@ -15,22 +15,25 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [step, setStep] = useContext(StepContext);
     const [guest, setGuest] = useState<UserDTO>();
     const [messages, setMessages] = useState<Message[]>();
+    const cLoaded = useRef<boolean>(false);
+    const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
         const currentRoom = await getRoom(user.roomId);
-        console.log(currentRoom);
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
         }
     }
-
+    
     useEffect(() => {
+        if (cLoaded.current) return;
         if (!roomInfo) {
             getRoomInfo();
         }
     }, [roomInfo]);
 
     useEffect(() => {
+        if (cLoaded.current) return;
         connection.on("RoomOwnerChanged", (id: string): void => {
             console.log(id);
             const areYouOwner: boolean = user.id === id;
@@ -41,11 +44,10 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("UserLeaved", (id: string): void => {
-
+            console.log("user id leaved", id);
         });
 
         connection.on("UserJoined", (user: UserDTO): void => {
-            console.log("user joined", user)
             setMessages((prev) => {
                 const newMess: Message[] = prev && prev?.length ? [...prev] : [];
                 const mess: Message = {
@@ -58,6 +60,26 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 return newMess;
             })
         });
+
+        connection.on("RoomOwnerChanged", (id: string): void => {
+            setRoomInfo((prev: RoomDTO) => {
+                const newRoomInfo: RoomDTO = { ...prev };
+                const newMembers = newRoomInfo.members?.filter(m => !m.isRoomOwner);
+                newMembers?.forEach(nm => {
+                    if(nm.id === id) {
+                        nm.isRoomOwner = true;
+                    }
+                });
+                newRoomInfo.members = newMembers;
+                return newRoomInfo;
+            });
+        });
+
+        connection.on("RoomClosed", (): void => {
+            setStep(2);
+            setRoomInfo(undefined);
+        });
+        cLoaded.current = true;
     }, []);
 
     const onFinish = (values: any) => {
@@ -75,7 +97,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             id: roomInfo.id,
             name: roomInfo.name,
             roomOwnerId: isOwner ? yourId : undefined,
-            guestId: isOwner ? undefined : yourId
+            guestId: isOwner ? undefined : yourId,
+            members: roomInfo.members
         }
 
         const res = await leaveRoom(room);
@@ -89,13 +112,19 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             setRoomInfo(undefined);
             setStep(2);
         } else {
-
+            api.warning({
+                message: 'Error',
+                description: "Something went wrong when leaving this room",
+                duration: 3,
+                placement: "top"
+            });
         }
 
     }
 
     return (
         <div className='game-menu'>
+            {contextHolder}
             <Flex wrap="wrap" gap="small">
                 <Button type="primary" danger onClick={handleWhenLeave}>
                     Leave
@@ -138,8 +167,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 <div className='chat-content'>
                     <div className='chat-messages'>
                         {
-                            messages?.map(mess => (
-                                <div className={mess.isMyMessage ? "my-message" : "message"}>
+                            messages?.map((mess, i) => (
+                                <div id={mess.userId + i} className={mess.isMyMessage ? "my-message" : "message"}>
                                     <b>{mess.userName}: </b>{mess.message}
                                 </div>
                             ))

@@ -1,4 +1,4 @@
-import { FC, useContext, useEffect, useState } from "react";
+import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
 import { Modal, Form, Button, List, Input, notification } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -23,6 +23,7 @@ const RoomList: FC<RoomListProps> = (props) => {
     const [openCreateRoom, setOpenCreateRoom] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
+    const cLoaded = useRef<boolean>(false);
 
     const getListRooms = async (): Promise<void> => {
         const res = await getAllRooms("", 1, 20);
@@ -47,16 +48,30 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     useEffect(() => {
+        if(cLoaded.current) return;
         getListRooms();
         getListUsers();
     }, []);
 
     useEffect(() => {
+        if(cLoaded.current) return;
         if (connection) {
             connection.on("RoomCreated", async () => {
                 await getListRooms();
             });
+            connection.on("UserLoggedIn", async (message: string) => {
+                await getListUsers();
+            });
+            connection.on("UserLoggedOut", async (message: string) => {
+                await getListUsers();
+            });
+
+            connection.on("RoomClosed", async () => {
+                console.log("room closed")
+                await getListRooms();
+            });
         }
+        cLoaded.current = true;
     }, [connection]);
 
     const handleCreate = async (): Promise<void> => {
@@ -90,7 +105,6 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
-        console.log(user)
         const currentRoom: RoomDTO = {
             id: room.id,
             name: room.name,
@@ -100,8 +114,7 @@ const RoomList: FC<RoomListProps> = (props) => {
         newUser.roomId = room.id;
         setUser(newUser);
         const res = await joinRoom(currentRoom);
-        console.log(res);
-        if(res.isSuccess) {
+        if (res.isSuccess) {
             setStep(3);
         }
     }
@@ -151,7 +164,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                                     title={<a href="">{item.userName}</a>}
                                     description={`Role: ${item.role}`}
                                 />
-                                <div>Status: <b style={{ color: "#1677ff" }}>{AccountStatus[item.status]}</b></div>
+                                <div><b style={{ color: item.isOnline ? "#1677ff" : "#ccc" }}>{item.isOnline ? "Online" : "Offline"}</b></div>
                             </List.Item>
                         }
                     />

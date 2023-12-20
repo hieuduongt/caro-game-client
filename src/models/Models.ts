@@ -50,6 +50,7 @@ export interface UserDTO {
     createdDate: Date;
     lastActiveDate: Date;
     isEditBy: string;
+    isOnline: boolean;
 }
 
 export interface Message {
