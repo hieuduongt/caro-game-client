@@ -51,6 +51,7 @@ export interface UserDTO {
     lastActiveDate: Date;
     isEditBy: string;
     isOnline: boolean;
+    connectionId: string;
 }
 
 export interface Message {

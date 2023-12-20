@@ -79,7 +79,8 @@ const App: FC = () => {
         createdDate: res.responseData.createdDate,
         isEditBy: res.responseData.isEditBy,
         lastActiveDate: res.responseData.lastActiveDate,
-        isOnline: res.responseData.isOnline
+        isOnline: res.responseData.isOnline,
+        connectionId: res.responseData.connectionId
       }
       setUser(currentUser);
       return res.responseData.roomId;
