@@ -65,7 +65,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 await getListUsers();
             });
 
-            connection.on("RoomClosed", async (id: string) => {
+            connection.on("RoomClosed", async () => {
                 await getListRooms();
             });
         }

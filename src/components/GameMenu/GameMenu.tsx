@@ -1,40 +1,52 @@
 import { FC, useContext, useEffect, useRef, useState } from 'react';
 import './GameMenu.css';
-import { Button, Form, Input, Flex, notification } from 'antd';
+import { Button, Form, Input, Flex, notification, Tooltip } from 'antd';
 import { AiOutlineSend } from "react-icons/ai";
-import { StepContext, UserContext } from '../../helpers/Context';
+import { InGameContext, StepContext, UserContext } from '../../helpers/Context';
 import { Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
 import { updateUserSlot } from '../../services/UserServices';
+import Countdown from '../Countdown/Countdown';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
 }
 
+enum Turn {
+    You,
+    Competitor
+}
+
 const GameMenu: FC<GameMenuProps> = (props) => {
     const { connection, roomInfo, setRoomInfo, user, setUser } = useContext(UserContext);
+    const { start, setStart } = useContext(InGameContext);
     const [step, setStep] = useContext(StepContext);
     const [guest, setGuest] = useState<UserDTO>();
     const [messages, setMessages] = useState<Message[]>();
+    const [turn, setTurn] = useState<Turn>(user.isRoomOwner ? Turn.You : Turn.Competitor);
+    const [pause, setPause] = useState<boolean>(false);
+    const [time, setTime] = useState<number>(240);
     const cLoaded = useRef<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
-        const currentRoom = await getRoom(user.roomId);
-        if (currentRoom.isSuccess) {
-            setRoomInfo(currentRoom.responseData);
-            const guest = currentRoom.responseData.members.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
-            if (guest) {
-                setGuest(guest);
-            } else {
-                setGuest(undefined);
+        if (user.roomId !== "" && user.roomId !== null && user.roomId !== undefined) {
+            const currentRoom = await getRoom(user.roomId);
+            if (currentRoom.isSuccess) {
+                setRoomInfo(currentRoom.responseData);
+                const guest = currentRoom.responseData.members.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
+                if (guest) {
+                    setGuest(guest);
+                } else {
+                    setGuest(undefined);
+                }
             }
         }
     }
 
     useEffect(() => {
         getRoomInfo();
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         if (cLoaded.current) return;
@@ -78,17 +90,20 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             await getRoomInfo();
         });
 
-        connection.on("RoomClosed", (id: string): void => {
-            onRoomClosed(id);
+        connection.on("RoomClosedGroup", (): void => {
+            onRoomClosed();
         });
         cLoaded.current = true;
-    }, []);
+    }, [user]);
 
-    const onRoomClosed = (id: string): void => {
-        if (roomInfo.id === id) {
-            setStep(2);
-            setRoomInfo(undefined);
-        }
+    const onRoomClosed = (): void => {
+        const newUser: UserDTO = user;
+        newUser.roomId = "";
+        newUser.sitting = false;
+        newUser.isRoomOwner = false;
+        setUser(newUser);
+        setRoomInfo(undefined);
+        setStep(2);
     }
 
     const changeOwner = (id: string): void => {
@@ -124,13 +139,13 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         const res = await leaveRoom(room);
 
         if (res.isSuccess == true) {
+            setStep(2);
             const newUser: UserDTO = user;
             newUser.roomId = "";
             newUser.sitting = false;
             newUser.isRoomOwner = false;
             setUser(newUser);
             setRoomInfo(undefined);
-            setStep(2);
         } else {
             api.warning({
                 message: 'Error',
@@ -142,7 +157,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenSitting = async () => {
-        console.log(user);
         if (user.isRoomOwner) {
             api.error({
                 message: 'Error',
@@ -190,13 +204,40 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         <div className='game-menu'>
             {contextHolder}
             <Flex wrap="wrap" gap="small">
-                <Button type="primary" danger onClick={handleWhenLeave}>
+                {
+                    user.isRoomOwner ?
+                        <Button type="primary" disabled={!guest} onClick={() => setStart(true)}>
+                            Start
+                        </Button> :
+                        <></>
+                }
+                {
+                    user.isRoomOwner ?
+                        <Tooltip placement="topLeft" title={"Kick the user, who was sitting!"} arrow>
+                            <Button type="default" disabled={!guest} danger onClick={() => { }}>
+                                Kick
+                            </Button>
+                        </Tooltip> :
+                        <></>
+                }
+
+                <Button type="default" danger onClick={handleWhenLeave}>
                     Leave
                 </Button>
             </Flex>
             <div className='players'>
                 <div className='player'>
-                    <div className='player-title'>Owner</div>
+                    <div className='player-title'>
+                        <div className='name'>
+                            Room Owner
+                        </div>
+                        <div className='time'>
+                            {start ?
+                                <Countdown time={time} pause={turn === Turn.You} onTimesUp={() => { console.log("Time's up") }} /> :
+                                <></>
+                            }
+                        </div>
+                    </div>
                     <div className='player-info current-user'>
                         <div className='info'>
                             <div className='avatar'>
@@ -211,7 +252,17 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                     </div>
                 </div>
                 <div className="player">
-                    <div className='player-title'>Competitor</div>
+                    <div className='player-title'>
+                        <div className='name'>
+                            Competitor
+                        </div>
+                        <div className='time'>
+                            {start ?
+                                <Countdown time={time} pause={turn === Turn.Competitor} onTimesUp={() => { console.log("Time's up") }} /> :
+                                <></>
+                            }
+                        </div>
+                    </div>
                     <div className={`slot ${user.isRoomOwner ? "full" : ""} ${guest ? "joined" : ""} player-info ${guest ? "joined" : ""}`} onClick={handleWhenSitting}>
                         <div className='info'>
                             <div className='avatar'>

@@ -30,6 +30,19 @@
 .player-title {
   text-align: center;
   font-weight: 600;
+  display: flex;
+  justify-content: center;
+  padding: 5px;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.time {
+  margin-left: 10px;
+  font-weight: 900;
+  color: #1677ff;
 }
 
 .player-info {
