@@ -1,6 +1,6 @@
 import React, { FC, useContext, useEffect, useState } from 'react';
 import './GameGrid.css';
-import { PlayerContext } from '../../helpers/Context';
+import { InGameContext, PlayerContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
@@ -33,12 +33,12 @@ const playerIcons = [
 ]
 
 const GameGrid: FC<GameGridProps> = (props) => {
+    const { start, setStart } = useContext(InGameContext);
     const { lengthX, lengthY, onclick, update, initialPlayer, foundWinner } = props;
     const [currentActiveCell, setCurrentActiveCell] = useState<CellValue>();
     const [gameBoard, setGameBoard] = useState<Array<Array<CellValue>>>([[]]);
     const [player, setPlayer] = useContext(PlayerContext);
-    const [isStopping, setIsStopping] = useState<boolean>(false);
-    const [isWinner, setIsWinner] = useState<boolean>(false);
+    const [isWinner, setIsWinner] = useState<string>("");
 
     const resetGameBoard = (): void => {
         const arr = [];
@@ -53,8 +53,9 @@ const GameGrid: FC<GameGridProps> = (props) => {
                 };
             }
         }
-        setIsStopping(false);
+        setStart(false);
         setGameBoard(arr);
+        setIsWinner("");
     }
 
     const updateGameBoard = (x: number, y: number, className: string, listCoordinates?: CellValue[]): void => {
@@ -87,8 +88,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
         const winner = checkWinner(gameBoard, update!.x, update!.y, initialPlayer);
         if (winner.winner) {
             updateGameBoard(update!.x, update!.y, "win", winner.listCoordinates);
-            setIsStopping(true);
-            setIsWinner(false);
+            setStart(false);
+            setIsWinner("competitor");
             foundWinner(winner.winner, resetGameBoard);
         } else {
             setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
@@ -109,7 +110,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
 
     const handleClick = (e: any, x: number, y: number): any => {
         // check if the cell is already clicked -> stop the logic
-        if(player !== initialPlayer) return;
+        if (player !== initialPlayer) return;
         if (!e || !e.target || e.target.nodeName.toLowerCase() !== "td") return;
         if (e.target.getAttribute("selected")) return;
         // if the cell is available -> fill the icon and do the logic
@@ -122,8 +123,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
         }
         if (winner.winner) {
             updateGameBoard(x, y, "win", winner.listCoordinates);
-            setIsStopping(true);
-            setIsWinner(true);
+            setStart(false);
+            setIsWinner("you");
             foundWinner(winner.winner, resetGameBoard);
         } else {
             setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
@@ -133,8 +134,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
 
     return (
         <div className='game-grid'>
-            <div className='game-table-overlay' style={{ opacity: isStopping ? 1 : 0, visibility: isStopping ? "visible" : "hidden", color: isWinner ? "green" : "red" }}>
-                You Win!
+            <div className='game-table-overlay' style={{ opacity: start ? 0 : 1, visibility: start ? "hidden" : "visible", color: isWinner === "you" ? "green" : "red" }}>
+                {isWinner === "you" ? "You Win!" : isWinner === "competitor" ? "You Lose!" : ""}
             </div>
             <div className="game-table">
                 <table>
@@ -158,7 +159,6 @@ const GameGrid: FC<GameGridProps> = (props) => {
                 </table>
             </div>
         </div>
-
     );
 }
 

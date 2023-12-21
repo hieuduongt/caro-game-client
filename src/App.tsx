@@ -1,6 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import './App.css';
-import { notification } from 'antd';
+import { notification, Spin, Popover, Button } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { PlayerContext, StepContext, UserContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
@@ -12,6 +13,7 @@ import { RoomDTO, UserDTO } from './models/Models';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
+  const [loading, setLoading] = useState<boolean>(false);
   const [player, setPlayer] = useState<string>("playerX");
   const cLoaded = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
@@ -21,6 +23,7 @@ const App: FC = () => {
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
 
   const checkIsLoggedIn = (): void => {
+    setLoading(true);
     const token = getAuthToken();
     if (token) {
       const isExp = isExpired();
@@ -28,6 +31,7 @@ const App: FC = () => {
         removeAuthToken();
         setRedirectToLogin(true);
         setStep(1);
+        setLoading(false);
       } else {
         const hubConnection = new signalR.HubConnectionBuilder()
           .withUrl("https://localhost:7222/connection/hub/game", {
@@ -49,17 +53,20 @@ const App: FC = () => {
           } else {
             setStep(2);
           }
+          setLoading(false);
         }).catch((error) => {
           api.error({
             message: 'Connect Failed',
-            description: error,
+            description: "Cannot connect to server with error: " + error.toString(),
             duration: -1,
             placement: "top"
           });
+          setLoading(false);
         });
       }
     } else {
       setStep(1);
+      setLoading(false);
     }
   }
 
@@ -88,6 +95,14 @@ const App: FC = () => {
     return false;
   }
 
+  const logOut = (): void => {
+    setUser(undefined);
+    removeAuthToken();
+    setStep(1);
+    connection?.stop();
+  }
+  
+
   useEffect((): any => {
     if (cLoaded.current)
       return
@@ -97,17 +112,40 @@ const App: FC = () => {
   return (
     <div className='container'>
       {contextHolder}
-      <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo }}>
-        <PlayerContext.Provider value={[player, setPlayer]}>
-          <StepContext.Provider value={[step, setStep]}>
-            {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}
-            {step === 2 ? <RoomList /> : <></>}
-            {step === 3 ? <InGame /> : <></>}
-          </StepContext.Provider>
+      {user ?
+        <div className='user-profile'>
+          <Popover placement="bottom" title={""} content={
+            <div style={{display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center"}}>
+              <Button type="link">Your profile</Button>
+              <Button type="dashed" onClick={logOut}>Log out</Button>
+            </div>
+            
+          } arrow={true} trigger="click">
+            <div className='profile'>
+              <div className='avatar'>
+                <img src="human.jpg" alt="" />
+              </div>
+              <div className='user-name'>{user.userName}</div>
+            </div>
+          </Popover>
+        </div> :
+        <></>
+      }
 
-        </PlayerContext.Provider>
-      </UserContext.Provider>
-    </div>
+      {
+        loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
+          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo }}>
+            <PlayerContext.Provider value={[player, setPlayer]}>
+              <StepContext.Provider value={[step, setStep]}>
+                {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}
+                {step === 2 ? <RoomList /> : <></>}
+                {step === 3 ? <InGame /> : <></>}
+              </StepContext.Provider>
+            </PlayerContext.Provider>
+          </UserContext.Provider>
+      }
+
+    </div >
 
 
   );

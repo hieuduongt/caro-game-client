@@ -31,3 +31,51 @@
     margin-top: 20px;
   }
 }
+
+.user-profile {
+  border-radius: 10px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+  width: 100%;
+  min-height: 80px;
+  height: 100%;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.user-profile>.profile {
+  width: fit-content;
+  height: 100%;
+  position: absolute;
+  right: 20px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile>.avatar {
+  max-width: 50px;
+  height: 50px;
+}
+
+.user-profile>.profile:hover {
+  --shadow-color: hsl(220deg 100% 55%);
+  filter: drop-shadow(1px 2px 8px var(--shadow-color));
+}
+
+.user-name {
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+  word-break: break-all;
+  word-wrap: break-word;
+  max-width: 100px;
+}
+
+.profile>.avatar>img {
+  border: 1px solid #ccc;
+}
