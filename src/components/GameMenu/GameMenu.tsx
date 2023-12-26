@@ -125,7 +125,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         message?: string;
     };
 
-    const handleWhenLeave = async () => {
+    const handleWhenLeave = async (): Promise<void> => {
         const yourId = user.id;
         const isOwner: boolean = roomInfo.members.find((m: UserDTO) => m.id === yourId && m.isRoomOwner === true) ? true : false;
         const room: RoomDTO = {
@@ -156,7 +156,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         }
     }
 
-    const handleWhenSitting = async () => {
+    const handleWhenSitting = async (): Promise<void> => {
         if (user.isRoomOwner) {
             api.error({
                 message: 'Error',
@@ -198,6 +198,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 });
             }
         }
+    }
+
+    const handleWhenStart = async (): Promise<void> => {
+        connection.send("StartGame", roomInfo);
+
     }
 
     return (
