@@ -1,15 +1,15 @@
 import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
-import { Modal, Form, Button, List, Input, notification } from 'antd';
+import { Modal, Form, Button, List, Input, notification, Space, Table, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { PlusOutlined } from '@ant-design/icons';
-import { AccountStatus, ResponseData, RoomDTO, UserDTO } from "../../models/Models";
+import { AccountStatus, ResponseData, RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
 import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
 import { StepContext, UserContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
 import { getAllUsers } from "../../services/UserServices";
+import type { ColumnsType } from 'antd/es/table';
 const { Search } = Input;
-
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
 
 }
@@ -18,17 +18,100 @@ const RoomList: FC<RoomListProps> = (props) => {
     const [roomCreationForm] = Form.useForm<RoomDTO>();
     const [step, setStep] = useContext(StepContext);
     const { setRedirectToLogin, connection, setRoomInfo, user, setUser } = useContext(UserContext);
-    const [listRooms, setListRooms] = useState<RoomDTO[]>();
-    const [listUsers, setListUsers] = useState<UserDTO[]>();
+    const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
+    const [roomSearchKeywords, setRoomSearchKeywords] = useState<string>("");
+    const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();
+    const [userSearchKeywords, setUserSearchKeywords] = useState<string>("");
     const [openCreateRoom, setOpenCreateRoom] = useState<boolean>(false);
+    const [reloadState, setReloadState] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
     const cLoaded = useRef<boolean>(false);
 
-    const getListRooms = async (): Promise<void> => {
-        const res = await getAllRooms("", 1, 20);
+    const roomColumns: ColumnsType<RoomDTO> = [
+        {
+            title: 'Name',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text) => <a>{text}</a>,
+            sorter: (a, b) => a.name.length - b.name.length,
+            sortDirections: ['descend', 'ascend']
+        },
+        {
+            title: 'Members in room',
+            dataIndex: 'numberOfUsers',
+            key: 'numberOfUsers',
+        },
+        {
+            title: 'Status',
+            key: 'status',
+            dataIndex: 'status',
+            render: (status: Status) => {
+                let color = "error";
+                if (status === Status.Available) {
+                    color = "green";
+                }
+                return (
+                    <Tag color={color} key={"status"}>
+                        {Status[status].toUpperCase()}
+                    </Tag>
+                );
+            }
+        },
+        {
+            title: 'Action',
+            key: 'action',
+            render: (_, record) => (
+                <a type="text" onClick={() => handleJoin(record)}>Join {record.name}</a>
+            ),
+        },
+    ];
+
+    const userColumns: ColumnsType<UserDTO> = [
+        {
+            title: 'Name',
+            dataIndex: 'userName',
+            key: 'userName',
+            render: (text) => <a>{text}</a>,
+            sorter: (a, b) => a.userName.length - b.userName.length,
+            sortDirections: ['descend', 'ascend']
+        },
+        {
+            title: 'Role',
+            dataIndex: 'role',
+            key: 'role'
+        },
+        {
+            title: 'Status',
+            key: 'isOnline',
+            dataIndex: 'isOnline',
+            render: (status: boolean) => {
+                let color = "error";
+                if (status) {
+                    color = "green";
+                }
+                return (
+                    <Tag color={color} key={"status"}>
+                        {
+                            status ? "Online" : "Offline"
+                        }
+                    </Tag>
+                );
+            }
+        },
+        {
+            title: 'Action',
+            key: 'action',
+            render: (_, record) => (
+                <a>Chat</a>
+            )
+        },
+    ];
+
+    const getListRooms = async (search?: string, page?: number, pageSize?: number): Promise<void> => {
+        const res = await getAllRooms(search, page, pageSize);
         if (res.isSuccess == true) {
-            setListRooms(res.responseData.items);
+            setListRooms(res.responseData);
         }
         if (res.isSuccess == false && res.code == 401) {
             setStep(1);
@@ -36,10 +119,10 @@ const RoomList: FC<RoomListProps> = (props) => {
         }
     }
 
-    const getListUsers = async (): Promise<void> => {
-        const res = await getAllUsers("", 1, 20);
+    const getListUsers = async (search?: string, page?: number, pageSize?: number): Promise<void> => {
+        const res = await getAllUsers(search, page, pageSize);
         if (res.isSuccess == true) {
-            setListUsers(res.responseData.items);
+            setListUsers(res.responseData);
         }
         if (res.isSuccess == false && res.code == 401) {
             setStep(1);
@@ -48,29 +131,29 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     useEffect(() => {
-        getListRooms();
-        getListUsers();
+        getListRooms(roomSearchKeywords, 1, 20);
+        getListUsers(userSearchKeywords, 1, 20);
     }, []);
 
     useEffect(() => {
-        if(cLoaded.current) return;
+        if (cLoaded.current) return;
         if (connection) {
             connection.on("RoomCreated", async () => {
-                await getListRooms();
+                await getListRooms(roomSearchKeywords, 1, 20);
             });
             connection.on("UserLoggedIn", async (message: string) => {
-                await getListUsers();
+                await getListUsers(userSearchKeywords, 1, 20);
             });
             connection.on("UserLoggedOut", async (message: string) => {
-                await getListUsers();
+                await getListUsers(userSearchKeywords, 1, 20);
             });
 
             connection.on("RoomClosed", async () => {
-                await getListRooms();
+                await getListRooms(roomSearchKeywords, 1, 20);
             });
         }
         cLoaded.current = true;
-    }, [connection]);
+    }, [connection, reloadState]);
 
     const handleCreate = async (): Promise<void> => {
         roomCreationForm
@@ -81,7 +164,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     roomCreationForm.resetFields();
                     const roomInfo: RoomDTO = result.responseData;
-                    setUser({...user, roomId: roomInfo.id, isRoomOwner: true, sitting: true, isOnline: true});
+                    setUser({ ...user, roomId: roomInfo.id, isRoomOwner: true, sitting: true, isOnline: true });
                     setRoomInfo(roomInfo);
                     setStep(3);
                     setOpenCreateRoom(false);
@@ -118,54 +201,72 @@ const RoomList: FC<RoomListProps> = (props) => {
         }
     }
 
+    const handleWhenSearchRoom = async (value: string, event?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLInputElement>, info?: {
+        source?: 'clear' | 'input';
+    }): Promise<void> => {
+
+        if (value && info?.source === "input") {
+            await getListRooms(value, 1, 20);
+            setRoomSearchKeywords(value);
+        }
+
+        if (info?.source === "clear") {
+            await getListRooms("", 1, 20);
+            setRoomSearchKeywords("");
+        }
+    }
+
+    const handleWhenSearchUser = async (value: string, event?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLInputElement>, info?: {
+        source?: 'clear' | 'input';
+    }): Promise<void> => {
+        if (info?.source === "input") {
+            await getListUsers(value || "", 1, 20);
+            setUserSearchKeywords(value || "");
+        }
+
+        if (info?.source === "clear") {
+            await getListUsers("", 1, 20);
+            setUserSearchKeywords("");
+        }
+    }
+
+    const handleWhenUserPaginationChange = async (page: number, pageSize: number): Promise<void> => {
+        await getListUsers(userSearchKeywords, page, pageSize);
+    }
+
+    const handleWhenRoomPaginationChange = async (page: number, pageSize: number): Promise<void> => {
+        await getListRooms(roomSearchKeywords, page, pageSize);
+    }
+
     return (
         <div className='in-room-container'>
             {contextHolder}
-            <div className="room-header">
-                <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => setOpenCreateRoom(true)}>
-                    Create a new room
-                </Button>
-                <Search className="input-search-room" addonBefore="Room Name" placeholder="input room name" allowClear size="large" />
-            </div>
             <div className="room-container">
                 <div className="list-rooms">
-                    <List
-                        style={{ minHeight: "100%" }}
-                        size="small"
-                        bordered
-                        dataSource={listRooms || []}
-                        renderItem={(item) =>
-                            <List.Item
-                                actions={[
-                                    <Button type="primary" size="large" onClick={() => handleJoin(item)}>
-                                        Join
-                                    </Button>
-                                ]}
-                            >
-                                <List.Item.Meta
-                                    title={<a href="">{item.name}</a>}
-                                    description={`Joined Members: ${item.numberOfUsers}`}
-                                />
-                                <div>Owner: <b style={{ color: "#1677ff" }}>{item.members?.find(m => m.id === item.roomOwnerId)?.userName}</b></div>
-                            </List.Item>
-                        }
+                    <Table
+                        columns={roomColumns}
+                        dataSource={listRooms?.items}
+                        pagination={{ position: ["bottomCenter"], pageSize: listRooms?.pageSize, current: listRooms?.currentPage, total: listRooms?.totalRecords, onChange: handleWhenRoomPaginationChange }}
+                        title={() =>
+                            <>
+                                <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => setOpenCreateRoom(true)}>
+                                    Create a new room
+                                </Button>
+                                <Search className="input-search-room" addonBefore="Room Name" placeholder="input room name" allowClear size="large" onSearch={handleWhenSearchRoom} />
+                            </>}
+                        scroll={{ y: 550 }}
                     />
                 </div>
                 <div className="list-users">
-                    <List
-                        style={{ minHeight: "100%" }}
-                        size="small"
-                        bordered
-                        dataSource={listUsers || []}
-                        renderItem={(item) =>
-                            <List.Item>
-                                <List.Item.Meta
-                                    title={<a href="">{item.userName}</a>}
-                                    description={`Role: ${item.role}`}
-                                />
-                                <div><b style={{ color: item.isOnline ? "#1677ff" : "#ccc" }}>{item.isOnline ? "Online" : "Offline"}</b></div>
-                            </List.Item>
-                        }
+                    <Table
+                        pagination={{ position: ["bottomCenter"], pageSize: listUsers?.pageSize, current: listUsers?.currentPage, total: listUsers?.totalRecords, onChange: handleWhenUserPaginationChange }}
+                        columns={userColumns}
+                        dataSource={listUsers?.items}
+                        title={() =>
+                            <>
+                                <Search className="input-search-user" addonBefore="User Name" placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
+                            </>}
+                        scroll={{ y: 550 }}
                     />
                 </div>
             </div>

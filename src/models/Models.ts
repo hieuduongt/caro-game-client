@@ -17,6 +17,14 @@ export interface ResponseData<T> {
     isSuccess: Boolean;
 }
 
+export interface Pagination<T> {
+    items?: Array<T>;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalRecords: number;
+}
+
 export enum Status {
     Available,
     Unavailable

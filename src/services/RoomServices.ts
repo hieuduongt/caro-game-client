@@ -1,7 +1,7 @@
-import { ResponseData, RoomDTO } from "../models/Models";
+import { Pagination, ResponseData, RoomDTO } from "../models/Models";
 import { get, post } from "./ApiCreator";
 
-export const getAllRooms = async (search?: string, page?: number, pageSize?: number) : Promise<ResponseData<RoomDTO>> => {
+export const getAllRooms = async (search?: string, page?: number, pageSize?: number) : Promise<ResponseData<Pagination<RoomDTO>>> => {
     const url = `https://localhost:7222/api/Game/room/all?search=${search}&page=${page || 1}&pageSize=${pageSize || 20}`;
     return get<RoomDTO>(url);
 }
