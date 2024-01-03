@@ -13,6 +13,14 @@ interface DecodedToken {
     nameidentifier?: string | number | string[];
 }
 
+const EnvEnpoint = (): string => {
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+        return "https://localhost:7222";
+    } else {
+        return "http://caro-server.hieuduongit.com";
+    }
+}
+
 const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, checkingPlayer: string): ReturnResult => {
     const result: ReturnResult = {
         winner: "",
@@ -174,4 +182,4 @@ const isExpired = (): boolean => {
     return false;
 }
 
-export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner }
+export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint }

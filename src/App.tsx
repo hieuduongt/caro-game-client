@@ -7,7 +7,7 @@ import { PlayerContext, StepContext, UserContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
-import { getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { EnvEnpoint, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { RoomDTO, UserDTO } from './models/Models';
 
@@ -34,7 +34,7 @@ const App: FC = () => {
         setLoading(false);
       } else {
         const hubConnection = new signalR.HubConnectionBuilder()
-          .withUrl("https://localhost:7222/connection/hub/game", {
+          .withUrl(`${EnvEnpoint()}/connection/hub/game`, {
             accessTokenFactory: () => getAuthToken(),
             skipNegotiation: true,
             transport: signalR.HttpTransportType.WebSockets,
