@@ -1,14 +1,15 @@
 import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
-import { Modal, Form, Button, List, Input, notification, Space, Table, Tag } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { Modal, Form, Button, Input, notification, Table, Tag } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import { PlusOutlined } from '@ant-design/icons';
-import { AccountStatus, ResponseData, RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
+import { RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
 import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
 import { StepContext, UserContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
 import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
+import { GiRoundTable } from "react-icons/gi";
 const { Search } = Input;
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
 
@@ -34,7 +35,15 @@ const RoomList: FC<RoomListProps> = (props) => {
             dataIndex: 'name',
             key: 'name',
             render: (text) => <a>{text}</a>,
-            sorter: (a, b) => a.name.length - b.name.length,
+            sorter: (a, b) => {
+                if ( a.name < b.name ){
+                    return -1;
+                  }
+                  if ( a.name > b.name ){
+                    return 1;
+                  }
+                  return 0;
+            },
             sortDirections: ['descend', 'ascend']
         },
         {
@@ -73,7 +82,15 @@ const RoomList: FC<RoomListProps> = (props) => {
             dataIndex: 'userName',
             key: 'userName',
             render: (text) => <a>{text}</a>,
-            sorter: (a, b) => a.userName.length - b.userName.length,
+            sorter: (a, b) => {
+                if ( a.userName < b.userName ){
+                    return -1;
+                  }
+                  if ( a.userName > b.userName ){
+                    return 1;
+                  }
+                  return 0;
+            },
             sortDirections: ['descend', 'ascend']
         },
         {
@@ -85,6 +102,8 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Status',
             key: 'isOnline',
             dataIndex: 'isOnline',
+            sorter: (a, b) => a.isOnline.toString().length - b.isOnline.toString().length,
+            sortDirections: ['descend', 'ascend'],
             render: (status: boolean) => {
                 let color = "error";
                 if (status) {
@@ -250,9 +269,9 @@ const RoomList: FC<RoomListProps> = (props) => {
                         title={() =>
                             <>
                                 <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => setOpenCreateRoom(true)}>
-                                    Create a new room
+                                    New room
                                 </Button>
-                                <Search className="input-search-room" addonBefore="Room Name" placeholder="input room name" allowClear size="large" onSearch={handleWhenSearchRoom} />
+                                <Search className="input-search-room" addonBefore={<GiRoundTable size={22} />} placeholder="input room name" allowClear size="large" onSearch={handleWhenSearchRoom} />
                             </>}
                         scroll={{ y: 550 }}
                     />
@@ -264,7 +283,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                         dataSource={listUsers?.items}
                         title={() =>
                             <>
-                                <Search className="input-search-user" addonBefore="User Name" placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
+                                <Search className="input-search-user" addonBefore={<UserOutlined />} placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
                             </>}
                         scroll={{ y: 550 }}
                     />

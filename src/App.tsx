@@ -113,7 +113,7 @@ const App: FC = () => {
     <div className='container'>
       {contextHolder}
       {user ?
-        <div className='user-profile'>
+        <div className={`user-profile`}>
           <Popover placement="bottom" title={""} content={
             <div style={{display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center"}}>
               <Button type="link">Your profile</Button>

@@ -8,7 +8,7 @@ interface ReturnResult {
 
 interface DecodedToken {
     exp?: string | number | string[];
-    role?: string | number | string[],
+    role?: string | number | string[];
     name?: string | number | string[];
     nameidentifier?: string | number | string[];
 }
@@ -17,7 +17,7 @@ const EnvEnpoint = (): string => {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
         return "https://localhost:7222";
     } else {
-        return "http://caro-server.hieuduongit.com";
+        return "https://caro-server.hieuduongit.com";
     }
 }
 
