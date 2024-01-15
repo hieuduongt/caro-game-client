@@ -67,5 +67,13 @@ export interface Message {
     userName: string;
     message: string;
     isMyMessage: boolean;
+}
 
+export interface GameDTO {
+    x: number;
+    y: number;
+    userId: string;
+    connectionId: string;
+    competitorId: string;
+    competitoConnectionId: string;
 }

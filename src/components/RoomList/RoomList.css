@@ -14,7 +14,7 @@
     display: flex;
 }
 
-@media screen and (max-width: 720px) {
+@media screen and (max-width: 1080px) {
     .room-container {
         padding: 10px;
         display: block !important;
@@ -26,6 +26,7 @@
         width: 100%;
         max-width: 100% !important;
     }
+
     .room-header {
         padding: 10px;
         display: block !important;
@@ -36,19 +37,29 @@
         margin-left: 0 !important;
         margin-top: 10px;
     }
+    .input-search-user {
+        max-width: 100% !important;
+        margin-left: 0 !important;
+    }
 }
 
 .list-rooms {
     width: 100%;
+    min-width: 200px;
 }
 
 .list-users {
-    margin-left: 10px;
     width: 100%;
-    max-width: 400px;
+    margin-left: 10px;
+    min-width: 200px;
+    max-width: 450px;
 }
 
 .input-search-room {
-    max-width: 400px;
+    max-width: 350px;
     margin-left: 10px;
+}
+
+.input-search-user {
+    max-width: 350px;
 }

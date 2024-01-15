@@ -7,6 +7,7 @@ import { Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
 import { updateUserSlot } from '../../services/UserServices';
 import Countdown from '../Countdown/Countdown';
+import { startGame } from '../../services/GameServices';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
@@ -68,6 +69,24 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
         connection.on("UserSitted", async (): Promise<void> => {
             await getRoomInfo();
+        });
+
+        connection.on("StartMatch", async (): Promise<void> => {
+            setStart(true);
+        });
+
+        connection.on("StartMessage", async (): Promise<void> => {
+            setMessages((prev) => {
+                const newMess: Message[] = prev && prev?.length ? [...prev] : [];
+                const mess: Message = {
+                    userId: user.id,
+                    userName: "",
+                    isMyMessage: false,
+                    message: `game started!!!`
+                }
+                newMess.push(mess);
+                return newMess;
+            });
         });
 
         connection.on("UserJoined", async (userName: string): Promise<void> => {
@@ -201,8 +220,21 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenStart = async (): Promise<void> => {
-        connection.send("StartGame", roomInfo);
+        const res = await startGame(roomInfo);
+        if(res.isSuccess === true) {
+            setStart(true);
+        } else {
+            api.error({
+                message: 'Error',
+                description: res.errorMessage,
+                duration: 3,
+                placement: "top"
+            });
+        }
+    }
 
+    const handleWhenKick = async (): Promise<void> => {
+        
     }
 
     return (
@@ -211,7 +243,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             <Flex wrap="wrap" gap="small">
                 {
                     user.isRoomOwner ?
-                        <Button type="primary" disabled={!guest} onClick={() => setStart(true)}>
+                        <Button type="primary" disabled={!guest} onClick={handleWhenStart}>
                             Start
                         </Button> :
                         <></>
@@ -219,7 +251,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 {
                     user.isRoomOwner ?
                         <Tooltip placement="topLeft" title={"Kick the user, who was sitting!"} arrow>
-                            <Button type="default" disabled={!guest} danger onClick={() => { }}>
+                            <Button type="default" disabled={!guest} danger onClick={handleWhenKick}>
                                 Kick
                             </Button>
                         </Tooltip> :

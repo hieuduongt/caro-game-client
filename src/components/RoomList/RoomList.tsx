@@ -1,8 +1,7 @@
 import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
-import { Modal, Form, Button, Input, notification, Table, Tag } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
-import { PlusOutlined } from '@ant-design/icons';
+import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip } from 'antd';
+import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
 import { RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
 import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
 import { StepContext, UserContext } from "../../helpers/Context";
@@ -10,9 +9,18 @@ import { getTokenProperties } from "../../helpers/Helper";
 import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
+import { RiLoginCircleLine } from "react-icons/ri";
 const { Search } = Input;
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
 
+}
+
+const CustomRow: FC<any> = (props) => {
+    return (
+        <Tooltip title="Double-click or click on the Join button to join">
+            <tr {...props} />
+        </Tooltip>
+    );
 }
 
 const RoomList: FC<RoomListProps> = (props) => {
@@ -24,7 +32,8 @@ const RoomList: FC<RoomListProps> = (props) => {
     const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();
     const [userSearchKeywords, setUserSearchKeywords] = useState<string>("");
     const [openCreateRoom, setOpenCreateRoom] = useState<boolean>(false);
-    const [reloadState, setReloadState] = useState<boolean>(false);
+    const [userReloadState, setUserReloadState] = useState<boolean>(false);
+    const [roomReloadState, setRoomReloadState] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
     const cLoaded = useRef<boolean>(false);
@@ -34,15 +43,15 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
-            render: (text) => <a>{text}</a>,
+            
             sorter: (a, b) => {
-                if ( a.name < b.name ){
+                if (a.name < b.name) {
                     return -1;
-                  }
-                  if ( a.name > b.name ){
+                }
+                if (a.name > b.name) {
                     return 1;
-                  }
-                  return 0;
+                }
+                return 0;
             },
             sortDirections: ['descend', 'ascend']
         },
@@ -71,7 +80,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Action',
             key: 'action',
             render: (_, record) => (
-                <a type="text" onClick={() => handleJoin(record)}>Join {record.name}</a>
+                <Button style={{ display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => handleJoin(record)} type="dashed"><RiLoginCircleLine style={{ marginRight: "5px" }} size={20} />Join {record.name}</Button>
             ),
         },
     ];
@@ -81,15 +90,15 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'userName',
             key: 'userName',
-            render: (text) => <a>{text}</a>,
+            render: (text) => <a href="#">{text}</a>,
             sorter: (a, b) => {
-                if ( a.userName < b.userName ){
+                if (a.userName < b.userName) {
                     return -1;
-                  }
-                  if ( a.userName > b.userName ){
+                }
+                if (a.userName > b.userName) {
                     return 1;
-                  }
-                  return 0;
+                }
+                return 0;
             },
             sortDirections: ['descend', 'ascend']
         },
@@ -122,36 +131,40 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Action',
             key: 'action',
             render: (_, record) => (
-                <a>Chat</a>
+                <Button icon={<SendOutlined />} type="text">Chat</Button>
             )
         },
     ];
 
     const getListRooms = async (search?: string, page?: number, pageSize?: number): Promise<void> => {
+        setRoomReloadState(true);
         const res = await getAllRooms(search, page, pageSize);
-        if (res.isSuccess == true) {
+        if (res.isSuccess === true) {
             setListRooms(res.responseData);
         }
-        if (res.isSuccess == false && res.code == 401) {
+        if (res.isSuccess === false && res.code === 401) {
             setStep(1);
             setRedirectToLogin(true);
         }
+        setRoomReloadState(false);
     }
 
     const getListUsers = async (search?: string, page?: number, pageSize?: number): Promise<void> => {
+        setUserReloadState(true);
         const res = await getAllUsers(search, page, pageSize);
-        if (res.isSuccess == true) {
+        if (res.isSuccess === true) {
             setListUsers(res.responseData);
         }
-        if (res.isSuccess == false && res.code == 401) {
+        if (res.isSuccess === false && res.code === 401) {
             setStep(1);
             setRedirectToLogin(true);
         }
+        setUserReloadState(false);
     }
 
     useEffect(() => {
-        getListRooms(roomSearchKeywords, 1, 20);
-        getListUsers(userSearchKeywords, 1, 20);
+        getListRooms(roomSearchKeywords || "", 1, 20);
+        getListUsers(userSearchKeywords || "", 1, 20);
     }, []);
 
     useEffect(() => {
@@ -170,9 +183,13 @@ const RoomList: FC<RoomListProps> = (props) => {
             connection.on("RoomClosed", async () => {
                 await getListRooms(roomSearchKeywords, 1, 20);
             });
+
+            connection.on("TestCountDown", async (current: number) => {
+                console.log(current);
+            });
         }
         cLoaded.current = true;
-    }, [connection, reloadState]);
+    }, [connection]);
 
     const handleCreate = async (): Promise<void> => {
         roomCreationForm
@@ -223,7 +240,6 @@ const RoomList: FC<RoomListProps> = (props) => {
     const handleWhenSearchRoom = async (value: string, event?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLInputElement>, info?: {
         source?: 'clear' | 'input';
     }): Promise<void> => {
-
         if (value && info?.source === "input") {
             await getListRooms(value, 1, 20);
             setRoomSearchKeywords(value);
@@ -257,9 +273,14 @@ const RoomList: FC<RoomListProps> = (props) => {
         await getListRooms(roomSearchKeywords, page, pageSize);
     }
 
+    const testCountDown = () => {
+        connection.send("TestCountDown");
+    }
+
     return (
         <div className='in-room-container'>
             {contextHolder}
+            <button onClick={testCountDown}>Start</button>
             <div className="room-container">
                 <div className="list-rooms">
                     <Table
@@ -274,6 +295,18 @@ const RoomList: FC<RoomListProps> = (props) => {
                                 <Search className="input-search-room" addonBefore={<GiRoundTable size={22} />} placeholder="input room name" allowClear size="large" onSearch={handleWhenSearchRoom} />
                             </>}
                         scroll={{ y: 550 }}
+                        rowKey={(record) => record.id}
+                        onRow={(record) => {
+                            return {
+                                onDoubleClick: (event) => handleJoin(record)
+                            }
+                        }}
+                        components={{
+                            body: {
+                                row: CustomRow
+                            }
+                        }}
+                        loading={roomReloadState}
                     />
                 </div>
                 <div className="list-users">
@@ -286,6 +319,8 @@ const RoomList: FC<RoomListProps> = (props) => {
                                 <Search className="input-search-user" addonBefore={<UserOutlined />} placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
                             </>}
                         scroll={{ y: 550 }}
+                        rowKey={(record) => record.id}
+                        loading={userReloadState}
                     />
                 </div>
             </div>
