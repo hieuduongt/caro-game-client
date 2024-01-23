@@ -85,9 +85,8 @@ export interface MatchDTO {
 }
 
 export interface UserInGame {
-    Id: string;
-    ConnectionId: string;
-    UserName?: string;
-    IsRoomOwner: boolean;
-    Time?: any;
+    id: string;
+    connectionId: string;
+    userName?: string;
+    isRoomOwner: boolean;
 }

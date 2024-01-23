@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 
 interface TimeProps extends React.HTMLAttributes<HTMLDivElement> {
     time: number;

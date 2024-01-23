@@ -6,8 +6,7 @@ import { InGameContext, StepContext, UserContext } from '../../helpers/Context';
 import { MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
 import { updateUserSlot } from '../../services/UserServices';
-import Countdown from '../Countdown/Countdown';
-import { startGame } from '../../services/GameServices';
+import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -20,14 +19,15 @@ enum Turn {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser } = useContext(UserContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, matchInfo, setMatchInfo } = useContext(UserContext);
     const { start, setStart } = useContext(InGameContext);
     const [step, setStep] = useContext(StepContext);
     const [guest, setGuest] = useState<UserDTO>();
     const [messages, setMessages] = useState<Message[]>();
     const [turn, setTurn] = useState<Turn>(user.isRoomOwner ? Turn.You : Turn.Competitor);
     const [pause, setPause] = useState<boolean>(false);
-    const [time, setTime] = useState<number>(0);
+    const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
+    const [competitorTime, setCompetitorTime] = useState<number>(0);
     const cLoaded = useRef<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
 
@@ -72,10 +72,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             await getRoomInfo();
         });
 
-        connection.on("StartMatch", async (): Promise<void> => {
-            setStart(true);
-        });
-
         connection.on("StartMessage", async (): Promise<void> => {
             setMessages((prev) => {
                 const newMess: Message[] = prev && prev?.length ? [...prev] : [];
@@ -114,17 +110,48 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             onRoomClosed();
         });
 
-        connection.on("MatchStarted", (matchInfo: MatchDTO): void => {
-            // do something
+        connection.on("MatchStarted", (match: MatchDTO): void => {
+            console.log(match);
+            setMatchInfo(match);
+            setStart(true);
         });
 
-        connection.on("TimeUpdate", (time: number, userId: string): void => {
-            console.log(time, userId);
-            setTime(time);
+        connection.on("TimeUpdate", (time: number, userId: string, isRoomOwner: boolean): void => {
+            console.log(isRoomOwner, userId);
+            if (isRoomOwner) {
+                setRoomOwnerTime(time);
+            } else {
+                setCompetitorTime(time);
+            }
         });
 
-        connection.on("TimesUp", (userId: string): void => {
-            // do something
+        connection.on("TimesUp", async (match: MatchDTO, loseUserId: string): Promise<void> => {
+            await handleWhenTimesUp(match, loseUserId);
+        });
+
+        connection.on("FinishMessage", async (result: boolean): Promise<void> => {
+            if (result) {
+                api.info({
+                    message: 'Info',
+                    description: "You win",
+                    duration: 5,
+                    placement: "top"
+                });
+            } else {
+                api.info({
+                    message: 'Info',
+                    description: "You lose",
+                    duration: 5,
+                    placement: "top"
+                });
+            }
+            await getRoomInfo();
+            setStart(false);
+        });
+
+        connection.on("FinishMessage", async (): Promise<void> => {
+            await getRoomInfo();
+            setStart(false);
         });
         cLoaded.current = true;
     }, [user]);
@@ -137,6 +164,16 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         setUser(newUser);
         setRoomInfo(undefined);
         setStep(2);
+    }
+
+    const handleWhenTimesUp = async (match: MatchDTO, loseUserId: string): Promise<void> => {
+        if (user.isRoomOwner) {
+            console.log(matchInfo);
+            await finishGame(matchInfo);
+            connection.invoke("StopMatch", match.matchId);
+        }
+        await getRoomInfo();
+        setStart(false);
     }
 
     const changeOwner = (id: string): void => {
@@ -190,10 +227,19 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenSitting = async (): Promise<void> => {
+        if (start) {
+            api.error({
+                message: 'Error',
+                description: "You cannot leave when playing!",
+                duration: 3,
+                placement: "top"
+            });
+            return;
+        }
         if (user.isRoomOwner) {
             api.error({
                 message: 'Error',
-                description: "You are the room owner, you cannot sit in the guest slot!",
+                description: "Your action cannot be done!",
                 duration: 3,
                 placement: "top"
             });
@@ -235,9 +281,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     const handleWhenStart = async (): Promise<void> => {
         const res = await startGame(roomInfo);
-        if(res.isSuccess === true) {
+        if (res.isSuccess === true) {
             connection.invoke("StartMatch", res.responseData);
             setStart(true);
+            setRoomOwnerTime(300);
+            setCompetitorTime(300);
         } else {
             api.error({
                 message: 'Error',
@@ -249,7 +297,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenKick = async (): Promise<void> => {
-        
+
     }
 
     return (
@@ -285,7 +333,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='time'>
                             {start ?
-                                <Time time={time}/> : <></>
+                                <Time time={roomOwnerTime} /> : <></>
                             }
                         </div>
                     </div>
@@ -309,7 +357,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='time'>
                             {start ?
-                                <Time time={time}/> : <></>
+                                <Time time={competitorTime} /> : <></>
                             }
                         </div>
                     </div>

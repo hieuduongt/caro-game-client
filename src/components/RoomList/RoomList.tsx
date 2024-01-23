@@ -170,7 +170,7 @@ const RoomList: FC<RoomListProps> = (props) => {
     useEffect(() => {
         if (cLoaded.current) return;
         if (connection) {
-            connection.on("RoomCreated", async () => {
+            connection.on("RoomUpdating", async () => {
                 await getListRooms(roomSearchKeywords, 1, 20);
             });
             connection.on("UserLoggedIn", async (message: string) => {
@@ -178,10 +178,6 @@ const RoomList: FC<RoomListProps> = (props) => {
             });
             connection.on("UserLoggedOut", async (message: string) => {
                 await getListUsers(userSearchKeywords, 1, 20);
-            });
-
-            connection.on("RoomClosed", async () => {
-                await getListRooms(roomSearchKeywords, 1, 20);
             });
         }
         cLoaded.current = true;

@@ -9,7 +9,7 @@ import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { RoomDTO, UserDTO } from './models/Models';
+import { MatchDTO, RoomDTO, UserDTO } from './models/Models';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -21,6 +21,7 @@ const App: FC = () => {
   const [user, setUser] = useState<UserDTO>();
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
+  const [matchInfo, setMatchInfo] = useState<MatchDTO>();
 
   const checkIsLoggedIn = (): void => {
     setLoading(true);
@@ -134,7 +135,7 @@ const App: FC = () => {
 
       {
         loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
-          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo }}>
+          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo, matchInfo, setMatchInfo }}>
             <PlayerContext.Provider value={[player, setPlayer]}>
               <StepContext.Provider value={[step, setStep]}>
                 {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}
