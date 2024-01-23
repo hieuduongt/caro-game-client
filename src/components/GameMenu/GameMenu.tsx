@@ -8,6 +8,7 @@ import { getRoom, leaveRoom } from '../../services/RoomServices';
 import { updateUserSlot } from '../../services/UserServices';
 import Countdown from '../Countdown/Countdown';
 import { startGame } from '../../services/GameServices';
+import Time from '../Time/Time';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
@@ -26,7 +27,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [messages, setMessages] = useState<Message[]>();
     const [turn, setTurn] = useState<Turn>(user.isRoomOwner ? Turn.You : Turn.Competitor);
     const [pause, setPause] = useState<boolean>(false);
-    const [time, setTime] = useState<number>(240);
+    const [time, setTime] = useState<number>(0);
     const cLoaded = useRef<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
 
@@ -119,6 +120,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
         connection.on("TimeUpdate", (time: number, userId: string): void => {
             console.log(time, userId);
+            setTime(time);
         });
 
         connection.on("TimesUp", (userId: string): void => {
@@ -283,8 +285,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='time'>
                             {start ?
-                                <Countdown time={time} pause={turn === Turn.You} onTimesUp={() => { console.log("Time's up") }} /> :
-                                <></>
+                                <Time time={time}/> : <></>
                             }
                         </div>
                     </div>
@@ -308,8 +309,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='time'>
                             {start ?
-                                <Countdown time={time} pause={turn === Turn.Competitor} onTimesUp={() => { console.log("Time's up") }} /> :
-                                <></>
+                                <Time time={time}/> : <></>
                             }
                         </div>
                     </div>
