@@ -90,7 +90,7 @@ const App: FC = () => {
         connectionId: res.responseData.connectionId
       }
       setUser(currentUser);
-      return res.responseData.roomId;
+      return res.responseData.roomId ? true : false;
     }
     return false;
   }

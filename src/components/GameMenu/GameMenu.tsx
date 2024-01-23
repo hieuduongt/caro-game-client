@@ -3,7 +3,7 @@ import './GameMenu.css';
 import { Button, Form, Input, Flex, notification, Tooltip } from 'antd';
 import { AiOutlineSend } from "react-icons/ai";
 import { InGameContext, StepContext, UserContext } from '../../helpers/Context';
-import { Message, RoomDTO, UserDTO } from '../../models/Models';
+import { MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
 import { updateUserSlot } from '../../services/UserServices';
 import Countdown from '../Countdown/Countdown';
@@ -35,7 +35,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             const currentRoom = await getRoom(user.roomId);
             if (currentRoom.isSuccess) {
                 setRoomInfo(currentRoom.responseData);
-                const guest = currentRoom.responseData.members.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
+                const guest = currentRoom.responseData.members!.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
                 if (guest) {
                     setGuest(guest);
                 } else {
@@ -111,6 +111,18 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
         connection.on("RoomClosedGroup", (): void => {
             onRoomClosed();
+        });
+
+        connection.on("MatchStarted", (matchInfo: MatchDTO): void => {
+            // do something
+        });
+
+        connection.on("TimeUpdate", (time: number, userId: string): void => {
+            console.log(time, userId);
+        });
+
+        connection.on("TimesUp", (userId: string): void => {
+            // do something
         });
         cLoaded.current = true;
     }, [user]);
@@ -222,6 +234,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const handleWhenStart = async (): Promise<void> => {
         const res = await startGame(roomInfo);
         if(res.isSuccess === true) {
+            connection.invoke("StartMatch", res.responseData);
             setStart(true);
         } else {
             api.error({

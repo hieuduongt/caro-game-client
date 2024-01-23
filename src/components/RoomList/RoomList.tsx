@@ -183,10 +183,6 @@ const RoomList: FC<RoomListProps> = (props) => {
             connection.on("RoomClosed", async () => {
                 await getListRooms(roomSearchKeywords, 1, 20);
             });
-
-            connection.on("TestCountDown", async (current: number) => {
-                console.log(current);
-            });
         }
         cLoaded.current = true;
     }, [connection]);
@@ -273,14 +269,9 @@ const RoomList: FC<RoomListProps> = (props) => {
         await getListRooms(roomSearchKeywords, page, pageSize);
     }
 
-    const testCountDown = () => {
-        connection.send("TestCountDown");
-    }
-
     return (
         <div className='in-room-container'>
             {contextHolder}
-            <button onClick={testCountDown}>Start</button>
             <div className="room-container">
                 <div className="list-rooms">
                     <Table

@@ -13,7 +13,7 @@ export interface RegisterDTO {
 export interface ResponseData<T> {
     code: number;
     errorMessage: string[];
-    responseData: T | any;
+    responseData: T;
     isSuccess: Boolean;
 }
 
@@ -76,4 +76,18 @@ export interface GameDTO {
     connectionId: string;
     competitorId: string;
     competitoConnectionId: string;
+}
+
+export interface MatchDTO {
+    userIngame: UserInGame[];
+    roomId: string;
+    matchId: string;
+}
+
+export interface UserInGame {
+    Id: string;
+    ConnectionId: string;
+    UserName?: string;
+    IsRoomOwner: boolean;
+    Time?: any;
 }

@@ -1,18 +1,18 @@
 import { EnvEnpoint } from "../helpers/Helper";
-import { GameDTO, ResponseData, RoomDTO } from "../models/Models";
+import { GameDTO, MatchDTO, ResponseData, RoomDTO } from "../models/Models";
 import { get, post } from "./ApiCreator";
 
-export const startGame = async (data: RoomDTO) : Promise<ResponseData<undefined>> => {
+export const startGame = async (data: RoomDTO) : Promise<ResponseData<MatchDTO>> => {
     const url = `${EnvEnpoint()}/api/Game/start-match`;
-    return post<ResponseData<undefined>>(url, data);
+    return post<MatchDTO>(url, data);
 }
 
-export const endGame = async (data: RoomDTO) : Promise<ResponseData<undefined>> => {
+export const endGame = async (data: RoomDTO) : Promise<ResponseData<any>> => {
     const url = `${EnvEnpoint()}/api/Game/finish-match`;
-    return post<ResponseData<undefined>>(url, data);
+    return post<undefined>(url, data);
 }
 
-export const move = async (data: GameDTO) : Promise<ResponseData<undefined>> => {
+export const move = async (data: GameDTO) : Promise<ResponseData<any>> => {
     const url = `${EnvEnpoint()}/api/Game/finish-match`;
-    return post<ResponseData<undefined>>(url, data);
+    return post<undefined>(url, data);
 }
