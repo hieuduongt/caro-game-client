@@ -48,7 +48,14 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     useEffect(() => {
         getRoomInfo();
+        if(user.isPlaying) {
+            getCurrentMatch();
+        }
     }, [user]);
+
+    const getCurrentMatch = () => {
+        connection.invoke("GetCurrentMatch", user.id, user.connectionId);
+    }
 
     useEffect(() => {
         if (cLoaded.current) return;
@@ -111,13 +118,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("MatchStarted", (match: MatchDTO): void => {
-            console.log(match);
             setMatchInfo(match);
             setStart(true);
         });
 
-        connection.on("TimeUpdate", (time: number, userId: string, isRoomOwner: boolean): void => {
-            console.log(isRoomOwner, userId);
+        connection.on("TimeUpdate", (time: number, userId: string, isRoomOwner: boolean): void => {;
             if (isRoomOwner) {
                 setRoomOwnerTime(time);
             } else {
@@ -130,8 +135,9 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("FinishMessage", async (result: boolean): Promise<void> => {
+            console.log(result)
             if (result) {
-                api.info({
+                api.success({
                     message: 'Info',
                     description: "You win",
                     duration: 5,
@@ -149,9 +155,15 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             setStart(false);
         });
 
-        connection.on("FinishMessage", async (): Promise<void> => {
+        connection.on("FinishMessageGroup", async (): Promise<void> => {
             await getRoomInfo();
             setStart(false);
+        });
+
+        connection.on("CurrentMatch", async (match: MatchDTO): Promise<void> => {
+            setMatchInfo(match);
+            setRoomOwnerTime(match.userInMatches.find(u => u.isRoomOwner)?.timeLeft || 300);
+            setCompetitorTime(match.userInMatches.find(u => !u.isRoomOwner)?.timeLeft || 300);
         });
         cLoaded.current = true;
     }, [user]);
@@ -168,9 +180,18 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     const handleWhenTimesUp = async (match: MatchDTO, loseUserId: string): Promise<void> => {
         if (user.isRoomOwner) {
-            console.log(matchInfo);
-            await finishGame(matchInfo);
-            connection.invoke("StopMatch", match.matchId);
+            match.userInMatches.forEach(u => {
+                if(u.id !== loseUserId) {
+                    u.isWinner = true;
+                } else {
+                    u.isWinner = false;
+                }
+                delete u.time;
+            });
+            const res = await finishGame(match);
+            if(res.isSuccess) {
+                connection.invoke("StopMatch", match.matchId);
+            }
         }
         await getRoomInfo();
         setStart(false);

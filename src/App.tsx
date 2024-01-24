@@ -34,41 +34,45 @@ const App: FC = () => {
         setStep(1);
         setLoading(false);
       } else {
-        const hubConnection = new signalR.HubConnectionBuilder()
-          .withUrl(`${EnvEnpoint()}/connection/hub/game`, {
-            accessTokenFactory: () => getAuthToken(),
-            skipNegotiation: true,
-            transport: signalR.HttpTransportType.WebSockets,
-            withCredentials: true
-          })
-          .withAutomaticReconnect()
-          .configureLogging(signalR.LogLevel.Debug)
-          .build();
-
-        hubConnection.start().then(async () => {
-          setConnection(hubConnection);
-          cLoaded.current = true;
-          const isInRoom = await checkIfIsInRoom();
-          if (isInRoom) {
-            setStep(3);
-          } else {
-            setStep(2);
-          }
-          setLoading(false);
-        }).catch((error) => {
-          api.error({
-            message: 'Connect Failed',
-            description: "Cannot connect to server with error: " + error.toString(),
-            duration: -1,
-            placement: "top"
-          });
-          setLoading(false);
-        });
+        connectToGameHub();
       }
     } else {
       setStep(1);
       setLoading(false);
     }
+  }
+
+  const connectToGameHub = () => {
+    const hubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(`${EnvEnpoint()}/connection/hub/game`, {
+        accessTokenFactory: () => getAuthToken(),
+        skipNegotiation: true,
+        transport: signalR.HttpTransportType.WebSockets,
+        withCredentials: true
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Debug)
+      .build();
+
+    hubConnection.start().then(async () => {
+      setConnection(hubConnection);
+      cLoaded.current = true;
+      const isInRoom = await checkIfIsInRoom();
+      if (isInRoom) {
+        setStep(3);
+      } else {
+        setStep(2);
+      }
+      setLoading(false);
+    }).catch((error) => {
+      api.error({
+        message: 'Connect Failed',
+        description: "Cannot connect to server with error: " + error.toString(),
+        duration: -1,
+        placement: "top"
+      });
+      setLoading(false);
+    });
   }
 
   const checkIfIsInRoom = async (): Promise<boolean> => {
@@ -87,6 +91,7 @@ const App: FC = () => {
         createdDate: res.responseData.createdDate,
         isEditBy: res.responseData.isEditBy,
         lastActiveDate: res.responseData.lastActiveDate,
+        isPlaying: res.responseData.isPlaying,
         isOnline: res.responseData.isOnline,
         connectionId: res.responseData.connectionId
       }
@@ -102,7 +107,7 @@ const App: FC = () => {
     setStep(1);
     connection?.stop();
   }
-  
+
 
   useEffect((): any => {
     if (cLoaded.current)
@@ -116,11 +121,11 @@ const App: FC = () => {
       {user ?
         <div className={`user-profile`}>
           <Popover placement="bottom" title={""} content={
-            <div style={{display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center"}}>
+            <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
               <Button type="link">Your profile</Button>
               <Button type="dashed" onClick={logOut}>Log out</Button>
             </div>
-            
+
           } arrow={true} trigger="click">
             <div className='profile'>
               <div className='avatar'>
@@ -138,7 +143,7 @@ const App: FC = () => {
           <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo, matchInfo, setMatchInfo }}>
             <PlayerContext.Provider value={[player, setPlayer]}>
               <StepContext.Provider value={[step, setStep]}>
-                {step === 1 ? <Home redirectToLogin={redirectToLogin} /> : <></>}
+                {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} checkIsLoggedIn={checkIsLoggedIn}/> : <></>}
                 {step === 2 ? <RoomList /> : <></>}
                 {step === 3 ? <InGame /> : <></>}
               </StepContext.Provider>

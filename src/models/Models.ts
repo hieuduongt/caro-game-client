@@ -59,6 +59,7 @@ export interface UserDTO {
     lastActiveDate: Date;
     isEditBy: string;
     isOnline: boolean;
+    isPlaying: boolean;
     connectionId: string;
 }
 
@@ -79,14 +80,17 @@ export interface GameDTO {
 }
 
 export interface MatchDTO {
-    userIngame: UserInGame[];
+    userInMatches: UserInMatches[];
     roomId: string;
     matchId: string;
 }
 
-export interface UserInGame {
+export interface UserInMatches {
     id: string;
     connectionId: string;
     userName?: string;
     isRoomOwner: boolean;
+    timeLeft?: number;
+    isWinner?: boolean;
+    time: any;
 }

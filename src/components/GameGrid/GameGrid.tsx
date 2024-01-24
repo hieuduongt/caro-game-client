@@ -1,6 +1,6 @@
 import React, { FC, useContext, useEffect, useState } from 'react';
 import './GameGrid.css';
-import { InGameContext, PlayerContext } from '../../helpers/Context';
+import { InGameContext, PlayerContext, UserContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
@@ -34,6 +34,7 @@ const playerIcons = [
 
 const GameGrid: FC<GameGridProps> = (props) => {
     const { start, setStart } = useContext(InGameContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, matchInfo, setMatchInfo } = useContext(UserContext);
     const { lengthX, lengthY, onclick, update, initialPlayer, foundWinner } = props;
     const [currentActiveCell, setCurrentActiveCell] = useState<CellValue>();
     const [gameBoard, setGameBoard] = useState<Array<Array<CellValue>>>([[]]);

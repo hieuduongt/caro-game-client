@@ -12,10 +12,12 @@ import * as signalR from "@microsoft/signalr";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
+    checkIsLoggedIn: () => void;
+    connectToGameHub: () => void;
 }
 
 const Home: FC<HomeProps> = (props) => {
-    const { redirectToLogin } = props;
+    const { redirectToLogin, checkIsLoggedIn, connectToGameHub } = props;
     const [api, contextHolder] = notification.useNotification();
     const { setUser, setConnection } = useContext(UserContext);
     const [step, setStep] = useContext(StepContext);
@@ -43,33 +45,7 @@ const Home: FC<HomeProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     loginForm.resetFields();
                     setAuthToken(result.responseData);
-                    const hubConnection = new signalR.HubConnectionBuilder()
-                        .withUrl("https://localhost:7222/connection/hub/game", {
-                            accessTokenFactory: () => getAuthToken(),
-                            skipNegotiation: true,
-                            transport: signalR.HttpTransportType.WebSockets,
-                            withCredentials: true
-                        })
-                        .withAutomaticReconnect()
-                        .configureLogging(signalR.LogLevel.Debug)
-                        .build();
-
-                    hubConnection.start().then(async () => {
-                        setConnection(hubConnection);
-                        const isInRoom = await checkIfIsInRoom();
-                        if (isInRoom) {
-                            setStep(3);
-                        } else {
-                            setStep(2);
-                        }
-                    }).catch((error) => {
-                        api.error({
-                            message: 'Connect Failed',
-                            description: error,
-                            duration: -1,
-                            placement: "top"
-                        });
-                    });
+                    connectToGameHub();
                 } else {
                     for (let it of result.errorMessage) {
                         api.error({
@@ -85,31 +61,6 @@ const Home: FC<HomeProps> = (props) => {
             .catch((info) => {
                 setLoggingIn(false);
             });
-    }
-
-    const checkIfIsInRoom = async (): Promise<boolean> => {
-        const id = getTokenProperties("nameidentifier");
-        const res = await getUser(id);
-        if (res.isSuccess && res.responseData) {
-            const currentUser: UserDTO = {
-                id: res.responseData.id,
-                userName: res.responseData.userName,
-                roomId: res.responseData.roomId,
-                email: res.responseData.email,
-                isRoomOwner: res.responseData.isRoomOwner,
-                role: res.responseData.role,
-                sitting: res.responseData.sitting,
-                status: res.responseData.status,
-                createdDate: res.responseData.createdDate,
-                isEditBy: res.responseData.isEditBy,
-                lastActiveDate: res.responseData.lastActiveDate,
-                isOnline: res.responseData.isOnline,
-                connectionId: res.responseData.connectionId
-            }
-            setUser(currentUser);
-            return res.responseData.roomId ? true : false;
-        }
-        return false;
     }
 
     const handleRegister = () => {
