@@ -143,6 +143,12 @@ const Home: FC<HomeProps> = (props) => {
                     name="login-form"
                     labelCol={{ span: 8 }}
                     wrapperCol={{ span: 16 }}
+                    onKeyDown={(e) => {
+                        console.log(e.code)
+                        if(e.code === 'Enter') {
+                            handleLogin();
+                        }
+                    }}
                 >
                     <Form.Item
                         name="username"

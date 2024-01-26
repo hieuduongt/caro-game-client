@@ -19,7 +19,7 @@ const InGame: FC<InGameProps> = (props) => {
     <div className='in-game-container'>
       <InGameContext.Provider value={{start, setStart}}>
         <GameMenu />
-        <GameGrid initialPlayer={"playerX"} foundWinner={(winner, reset) => { console.log(winner); }} lengthX={40} lengthY={20} onclick={() => { }} />
+        <GameGrid initialPlayer={"playerX"}/>
       </InGameContext.Provider>
     </div>
   )

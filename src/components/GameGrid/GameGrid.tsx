@@ -1,22 +1,19 @@
 import React, { FC, useContext, useEffect, useState } from 'react';
 import './GameGrid.css';
-import { InGameContext, PlayerContext, UserContext } from '../../helpers/Context';
+import { InGameContext, UserContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
+import { ReceiveCoordinates, UserInMatches } from '../../models/Models';
+import { finishGame } from '../../services/GameServices';
 
 interface GameGridProps extends React.HTMLAttributes<HTMLDivElement> {
-    lengthX: number;
-    lengthY: number;
-    onclick: (x: number, y: number, player: string) => void;
-    update?: CellValue;
     initialPlayer: string;
-    foundWinner: (winner: string | undefined, reset: () => void) => void;
 }
 
 export interface CellValue {
-    player: string;
-    className: string;
+    userId: string;
+    icon: string;
     x: number;
     y: number;
 }
@@ -34,21 +31,20 @@ const playerIcons = [
 
 const GameGrid: FC<GameGridProps> = (props) => {
     const { start, setStart } = useContext(InGameContext);
-    const { connection, roomInfo, setRoomInfo, user, setUser, matchInfo, setMatchInfo } = useContext(UserContext);
-    const { lengthX, lengthY, onclick, update, initialPlayer, foundWinner } = props;
-    const [currentActiveCell, setCurrentActiveCell] = useState<CellValue>();
+    const { connection, roomInfo, matchInfo, user } = useContext(UserContext);
+    const { initialPlayer } = props;
     const [gameBoard, setGameBoard] = useState<Array<Array<CellValue>>>([[]]);
-    const [player, setPlayer] = useContext(PlayerContext);
+    const [player, setPlayer] = useState<string>("");
     const [isWinner, setIsWinner] = useState<string>("");
 
     const resetGameBoard = (): void => {
         const arr = [];
-        for (let i = 0; i < lengthY; i++) {
+        for (let i = 0; i < 20; i++) {
             arr[i] = new Array<CellValue>();
-            for (let j = 0; j < lengthX; j++) {
+            for (let j = 0; j < 40; j++) {
                 arr[i][j] = {
-                    player: "",
-                    className: "",
+                    userId: "",
+                    icon: "",
                     x: j,
                     y: i
                 };
@@ -59,85 +55,73 @@ const GameGrid: FC<GameGridProps> = (props) => {
         setIsWinner("");
     }
 
-    const updateGameBoard = (x: number, y: number, className: string, listCoordinates?: CellValue[]): void => {
+    const updateGameBoard = (x: number, y: number, userId: string, icon: string): void => {
         const newBoard = [...gameBoard];
-        if (listCoordinates?.length) {
-            listCoordinates.forEach(it => {
-                newBoard[it.x][it.y] = {
-                    player: player,
-                    className: className,
-                    x: it.x,
-                    y: it.y
-                }
-            });
-        } else {
-            newBoard[x][y] = {
-                player: player,
-                className: className,
-                x: x,
-                y: y
-            }
+        newBoard[x][y] = {
+            userId: userId,
+            icon: icon,
+            x: x,
+            y: y
         }
         setGameBoard(newBoard);
     }
 
-    const switchTurn = (): void => {
-        if (currentActiveCell?.x) {
-            updateGameBoard(currentActiveCell.x, currentActiveCell.y, "");
-        }
-        updateGameBoard(update!.x, update!.y, "current");
-        const winner = checkWinner(gameBoard, update!.x, update!.y, initialPlayer);
+    const switchTurn = (data: ReceiveCoordinates): void => {
+        document.querySelector(".current")?.classList.remove("current");
+        updateGameBoard(data.x, data.y, data.userId, player === "playerX" ? "playerO" : "playerX");
+        const winner = checkWinner(gameBoard, data.x, data.y, data.userId);
         if (winner.winner) {
-            updateGameBoard(update!.x, update!.y, "win", winner.listCoordinates);
-            setStart(false);
-            setIsWinner("competitor");
-            foundWinner(winner.winner, resetGameBoard);
+
+
         } else {
             setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
-            onclick(update!.x, update!.y, player);
         }
-        setCurrentActiveCell(update);
     }
 
     useEffect(() => {
-        if (update) {
-            switchTurn();
-        }
-    }, [update]);
+        connection.on("UpdateTurn", (data: ReceiveCoordinates) => {
+            switchTurn(data);
+        });
+    }, []);
 
     useEffect(() => {
-        resetGameBoard();
-    }, [lengthX, lengthY]);
+        setPlayer(initialPlayer);
+    }, [initialPlayer]);
 
-    const handleClick = (e: any, x: number, y: number): any => {
+    const handleClick = async (e: any, x: number, y: number): Promise<void> => {
         // check if the cell is already clicked -> stop the logic
         if (player !== initialPlayer) return;
         if (!e || !e.target || e.target.nodeName.toLowerCase() !== "td") return;
         if (e.target.getAttribute("selected")) return;
         // if the cell is available -> fill the icon and do the logic
         document.querySelector(".current")?.classList.remove("current");
-        updateGameBoard(x, y, "");
+        updateGameBoard(x, y, user.id, player);
         e.target.setAttribute("selected", "true");
         const winner = checkWinner(gameBoard, x, y, initialPlayer);
-        if (currentActiveCell?.x) {
-            updateGameBoard(currentActiveCell.x, currentActiveCell.y, "");
-        }
         if (winner.winner) {
-            updateGameBoard(x, y, "win", winner.listCoordinates);
-            setStart(false);
-            setIsWinner("you");
-            foundWinner(winner.winner, resetGameBoard);
+            matchInfo.userInMatches.forEach((u: UserInMatches) => {
+                if (u.id === user.id) {
+                    u.isWinner = true;
+                } else {
+                    u.isWinner = false;
+                }
+                delete u.time;
+            });
+            const res = await finishGame(matchInfo);
+            if (res.isSuccess) {
+                connection.invoke("StopMatch", matchInfo.matchId);
+            }
+            updateGameBoard(x, y, user.id, player);
         } else {
             setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
-            onclick(x, y, player);
         }
     }
 
     return (
         <div className='game-grid'>
-            <div className='game-table-overlay' style={{ opacity: start ? 0 : 1, visibility: start ? "hidden" : "visible", color: isWinner === "you" ? "green" : "red" }}>
+            {/* <div className='game-table-overlay' style={{ opacity: start ? 0 : 1, visibility: start ? "hidden" : "visible", color: isWinner === "you" ? "green" : "red" }}>
                 {isWinner === "you" ? "You Win!" : isWinner === "competitor" ? "You Lose!" : ""}
-            </div>
+            </div> */}
             <div className="game-table">
                 <table>
                     <tbody>
@@ -146,9 +130,9 @@ const GameGrid: FC<GameGridProps> = (props) => {
                                 <tr key={y}>
                                     {
                                         itemY.map((itemX, x) => (
-                                            <td key={`${y}, ${x}`} onClick={(e) => handleClick(e, y, x)} className={itemX.className} custom-coordinates={`${y}, ${x}`}>
+                                            <td key={`${y}, ${x}`} onClick={(e) => handleClick(e, y, x)} custom-coordinates={`${y}, ${x}`}>
                                                 {
-                                                    playerIcons.find(it => it.playerName === itemX.player)?.icon
+                                                    playerIcons.find(it => it.playerName === itemX.icon)?.icon
                                                 }
                                             </td>
                                         ))

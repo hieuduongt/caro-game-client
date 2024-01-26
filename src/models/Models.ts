@@ -94,3 +94,9 @@ export interface UserInMatches {
     isWinner?: boolean;
     time: any;
 }
+
+export interface ReceiveCoordinates {
+    x: number;
+    y: number;
+    userId: string;
+}
