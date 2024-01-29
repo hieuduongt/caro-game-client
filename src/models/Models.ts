@@ -1,9 +1,3 @@
-export interface Coordinates {
-    userId: string;
-    player: Player | string;
-    x: number;
-    y: number;
-}
 
 export interface LoginDTO {
     username: string;
@@ -85,7 +79,6 @@ export interface MatchDTO {
 
 export interface UserInMatches {
     id: string;
-    connectionId: string;
     userName?: string;
     isRoomOwner: boolean;
     timeLeft?: number;
@@ -94,18 +87,20 @@ export interface UserInMatches {
 }
 
 export interface GameDTO {
-    ReceiveCoordinates: ReceiveCoordinates;
+    Coordinates: Coordinates;
     competitorId: string;
-    competitorConnectionId: string;
     roomId: string;
     matchId: string;
 }
 
-export interface ReceiveCoordinates {
+export interface Coordinates {
+    id?: string;
+    userId: string;
+    player: Player|string;
     x: number;
     y: number;
-    userId: string;
-    player: Player;
+    current?: boolean;
+    winPoint?: boolean;
 }
 
 export enum Player {

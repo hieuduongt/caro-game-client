@@ -4,7 +4,7 @@ import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip } from 'a
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
 import { RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
 import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
-import { StepContext, UserContext } from "../../helpers/Context";
+import { AppContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
 import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
@@ -25,8 +25,7 @@ const CustomRow: FC<any> = (props) => {
 
 const RoomList: FC<RoomListProps> = (props) => {
     const [roomCreationForm] = Form.useForm<RoomDTO>();
-    const [step, setStep] = useContext(StepContext);
-    const { setRedirectToLogin, connection, setRoomInfo, user, setUser } = useContext(UserContext);
+    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep } = useContext(AppContext);
     const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
     const [roomSearchKeywords, setRoomSearchKeywords] = useState<string>("");
     const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();

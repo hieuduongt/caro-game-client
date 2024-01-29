@@ -3,19 +3,21 @@ import './App.css';
 import { notification, Spin, Popover, Button } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
-import { PlayerContext, StepContext, UserContext } from './helpers/Context';
+import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, RoomDTO, UserDTO } from './models/Models';
-import { getCurrentMatchByUserId, getGameBoard } from './services/GameServices';
+import { getCurrentMatchByUserId, getListCoordinates } from './services/GameServices';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
   const [loading, setLoading] = useState<boolean>(false);
-  const [player, setPlayer] = useState<string>("playerX");
+  const [yourTurn, setYourTurn] = useState<boolean>(false);
+  const [newGame, setNewGame] = useState<number>(0);
+  const [start, setStart] = useState<boolean>(false);
   const cLoaded = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
   const [step, setStep] = useState<number>(1);
@@ -23,7 +25,7 @@ const App: FC = () => {
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
-  const [gameBoard, setGameBoard] = useState<Array<Array<Coordinates>>>([[]]);
+  const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
 
   const checkIsLoggedIn = (): void => {
     setLoading(true);
@@ -98,13 +100,27 @@ const App: FC = () => {
         connectionId: res.responseData.connectionId
       }
       setUser(currentUser);
-      if(res.responseData.isPlaying) {
+      if (res.responseData.isPlaying) {
         const match = await getCurrentMatchByUserId(res.responseData.id);
-        if(match.isSuccess) {
+        if (match.isSuccess) {
           setMatchInfo(match.responseData);
-          const gameBoard = await getGameBoard(match.responseData.matchId);
-          if(gameBoard.isSuccess) {
-            setGameBoard(gameBoard.responseData);
+          const listCoordinates = await getListCoordinates(match.responseData.matchId);
+          if (listCoordinates.isSuccess) {
+            setListCoordinates(listCoordinates.responseData);
+            const currentCoordinate = listCoordinates.responseData.find(lc => lc.current === true);
+            if(currentCoordinate) {
+              if(currentCoordinate.userId === currentUser?.id) {
+                setYourTurn(false);
+              } else {
+                setYourTurn(true);
+              }
+            } else {
+              if(currentUser?.isRoomOwner === true){
+                setYourTurn(true);
+              } else {
+                setYourTurn(false);
+              }
+            }
           }
         }
       }
@@ -119,7 +135,6 @@ const App: FC = () => {
     setStep(1);
     connection?.stop();
   }
-
 
   useEffect((): any => {
     if (cLoaded.current)
@@ -152,15 +167,32 @@ const App: FC = () => {
 
       {
         loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
-          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo, matchInfo, setMatchInfo, gameBoard, setGameBoard }}>
-            <PlayerContext.Provider value={[player, setPlayer]}>
-              <StepContext.Provider value={[step, setStep]}>
-                {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} checkIsLoggedIn={checkIsLoggedIn}/> : <></>}
-                {step === 2 ? <RoomList /> : <></>}
-                {step === 3 ? <InGame /> : <></>}
-              </StepContext.Provider>
-            </PlayerContext.Provider>
-          </UserContext.Provider>
+          <AppContext.Provider value={{
+            user,
+            setUser,
+            redirectToLogin,
+            setRedirectToLogin,
+            connection,
+            setConnection,
+            roomInfo,
+            setRoomInfo,
+            matchInfo,
+            setMatchInfo,
+            listCoordinates,
+            setListCoordinates,
+            step,
+            setStep,
+            yourTurn,
+            setYourTurn,
+            start,
+            setStart,
+            newGame,
+            setNewGame
+          }}>
+            {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
+            {step === 2 ? <RoomList /> : <></>}
+            {step === 3 ? <InGame /> : <></>}
+          </AppContext.Provider>
       }
 
     </div >

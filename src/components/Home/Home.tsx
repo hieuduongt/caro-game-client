@@ -1,26 +1,18 @@
-import { FC, useContext, useEffect, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
-import { StepContext, UserContext } from "../../helpers/Context";
 import { login, register } from "../../services/AuthServices";
-import { getAllRooms } from "../../services/RoomServices";
-import { getAuthToken, getTokenProperties, setAuthToken } from "../../helpers/Helper";
-import { UserDTO } from "../../models/Models";
-import { getUser } from "../../services/UserServices";
-import * as signalR from "@microsoft/signalr";
+import { setAuthToken } from "../../helpers/Helper";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
-    checkIsLoggedIn: () => void;
     connectToGameHub: () => void;
 }
 
 const Home: FC<HomeProps> = (props) => {
-    const { redirectToLogin, checkIsLoggedIn, connectToGameHub } = props;
+    const { redirectToLogin, connectToGameHub } = props;
     const [api, contextHolder] = notification.useNotification();
-    const { setUser, setConnection } = useContext(UserContext);
-    const [step, setStep] = useContext(StepContext);
     const [loginForm] = Form.useForm();
     const [registerForm] = Form.useForm();
     const [openLoginForm, setOpenLoginForm] = useState<boolean>(false);

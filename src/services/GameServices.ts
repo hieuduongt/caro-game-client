@@ -7,13 +7,18 @@ export const startGame = async (data: RoomDTO) : Promise<ResponseData<MatchDTO>>
     return post<MatchDTO>(url, data);
 }
 
-export const finishGame = async (data: MatchDTO) : Promise<ResponseData<any>> => {
+export const finishGame = async (data: MatchDTO) : Promise<ResponseData<undefined>> => {
     const url = `${EnvEnpoint()}/api/Game/finish-match`;
     return post<undefined>(url, data);
 }
 
-export const move = async (data: GameDTO) : Promise<ResponseData<any>> => {
+export const move = async (data: GameDTO) : Promise<ResponseData<Coordinates>> => {
     const url = `${EnvEnpoint()}/api/Game/move`;
+    return post<Coordinates>(url, data);
+}
+
+export const updateWinPoints = async (data: Coordinates[]) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Game/update-win-point`;
     return post<undefined>(url, data);
 }
 
@@ -22,7 +27,12 @@ export const getCurrentMatchByUserId = async (userId: string) : Promise<Response
     return get<MatchDTO>(url);
 }
 
-export const getGameBoard = async (matchId: string) : Promise<ResponseData<Array<Array<Coordinates>>>> => {
-    const url = `${EnvEnpoint()}/api/Game/match/game-board/${matchId}`;
-    return get<Array<Array<Coordinates>>>(url);
+export const getListCoordinates = async (matchId: string) : Promise<ResponseData<Coordinates[]>> => {
+    const url = `${EnvEnpoint()}/api/Game/match-coordinates/${matchId}`;
+    return get<Coordinates[]>(url);
+}
+
+export const getCurrentCoordinates = async (matchId: string) : Promise<ResponseData<Coordinates>> => {
+    const url = `${EnvEnpoint()}/api/Game/current-coordinates/${matchId}`;
+    return get<Coordinates>(url);
 }
