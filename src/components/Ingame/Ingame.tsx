@@ -13,7 +13,7 @@ const InGame: FC<InGameProps> = (props) => {
   const [start, setStart] = useState<boolean>(true);
   useEffect(() => {
     if(user && user.isPlaying) {
-      connection.invoke("GetCurrentMatch", user.id, user.connectionId);
+      // connection.invoke("GetCurrentMatch", user.id, user.connectionId);
       setStart(true);
     }
   }, [user])

@@ -48,15 +48,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     useEffect(() => {
         getRoomInfo();
-        if(user.isPlaying) {
-            getCurrentMatch();
-        }
     }, [user]);
-
-    const getCurrentMatch = () => {
-        connection.invoke("GetCurrentMatch", user.id, user.connectionId);
-    }
-
     useEffect(() => {
         if (cLoaded.current) return;
 
@@ -159,12 +151,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             setStart(false);
         });
 
-        connection.on("CurrentMatch", async (match: MatchDTO): Promise<void> => {
-            console.log(match);
-            setMatchInfo(match);
-            setRoomOwnerTime(match.userInMatches.find(u => u.isRoomOwner)?.timeLeft || 300);
-            setCompetitorTime(match.userInMatches.find(u => !u.isRoomOwner)?.timeLeft || 300);
-        });
         cLoaded.current = true;
     }, [user]);
 

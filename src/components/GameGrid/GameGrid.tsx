@@ -4,18 +4,11 @@ import { InGameContext, UserContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
-import { GameDTO, Player, ReceiveCoordinates, UserInMatches } from '../../models/Models';
+import { Coordinates, GameDTO, Player, ReceiveCoordinates, UserInMatches } from '../../models/Models';
 import { finishGame, move } from '../../services/GameServices';
 
 interface GameGridProps extends React.HTMLAttributes<HTMLDivElement> {
     initialPlayer: Player;
-}
-
-export interface CellValue {
-    userId: string;
-    icon: Player | string;
-    x: number;
-    y: number;
 }
 
 const playerIcons = [
@@ -31,20 +24,19 @@ const playerIcons = [
 
 const GameGrid: FC<GameGridProps> = (props) => {
     const { start, setStart } = useContext(InGameContext);
-    const { connection, roomInfo, matchInfo, user } = useContext(UserContext);
+    const { connection, roomInfo, matchInfo, user, gameBoard, setGameBoard } = useContext(UserContext);
     const { initialPlayer } = props;
-    const [gameBoard, setGameBoard] = useState<Array<Array<CellValue>>>([[]]);
     const [player, setPlayer] = useState<Player>();
     const [isWinner, setIsWinner] = useState<string>("");
 
     const resetGameBoard = (): void => {
         const arr = [];
         for (let i = 0; i < 20; i++) {
-            arr[i] = new Array<CellValue>();
+            arr[i] = new Array<Coordinates>();
             for (let j = 0; j < 40; j++) {
                 arr[i][j] = {
                     userId: "",
-                    icon: "",
+                    player: "",
                     x: j,
                     y: i
                 };
@@ -55,12 +47,12 @@ const GameGrid: FC<GameGridProps> = (props) => {
         setIsWinner("");
     }
 
-    const updateGameBoard = (x: number, y: number, userId: string, icon: Player): void => {
-        setGameBoard((gameBoard) => {
-            const newBoard = [...gameBoard];
+    const updateGameBoard = (x: number, y: number, userId: string, player: Player): void => {
+        setGameBoard((gb: Array<Array<Coordinates>>) => {
+            const newBoard = [...gb];
             newBoard[x][y] = {
                 userId: userId,
-                icon: icon,
+                player: player,
                 x: x,
                 y: y
             }
@@ -69,16 +61,14 @@ const GameGrid: FC<GameGridProps> = (props) => {
     }
 
     const switchTurn = (data: ReceiveCoordinates): void => {
-        console.log("hhhhhhhh")
         document.querySelector(".current")?.classList.remove("current");
         updateGameBoard(data.x, data.y, data.userId, data.player);
         document.querySelector(`[custom-coordinates="${data.x}, ${data.y}"]`)?.classList.add("current");
     }
 
     useEffect(() => {
-        resetGameBoard();
+        //resetGameBoard();
         connection.on("UpdateTurn", (data: ReceiveCoordinates) => {
-            console.log(data);
             switchTurn(data);
         });
     }, []);
@@ -143,13 +133,13 @@ const GameGrid: FC<GameGridProps> = (props) => {
                 <table>
                     <tbody>
                         {
-                            gameBoard.map((itemY, y) => (
+                            gameBoard.map((itemY: Array<Coordinates>, y: number) => (
                                 <tr key={y}>
                                     {
-                                        itemY.map((itemX, x) => (
+                                        itemY.map((itemX: Coordinates, x: number) => (
                                             <td key={`${y}, ${x}`} onClick={(e) => handleClick(e, y, x)} custom-coordinates={`${y}, ${x}`}>
                                                 {
-                                                    playerIcons.find(it => it.playerName === itemX.icon)?.icon
+                                                    playerIcons.find(it => it.playerName === itemX.player)?.icon
                                                 }
                                             </td>
                                         ))

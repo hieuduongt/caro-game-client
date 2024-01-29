@@ -144,8 +144,7 @@ const Home: FC<HomeProps> = (props) => {
                     labelCol={{ span: 8 }}
                     wrapperCol={{ span: 16 }}
                     onKeyDown={(e) => {
-                        console.log(e.code)
-                        if(e.code === 'Enter') {
+                        if(e.code && e.code.includes('Enter')) {
                             handleLogin();
                         }
                     }}

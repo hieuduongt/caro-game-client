@@ -1,9 +1,9 @@
-import { CellValue } from "../components/GameGrid/GameGrid";
 import { jwtDecode } from "jwt-decode";
+import { Coordinates } from "../models/Models";
 
 interface ReturnResult {
     winner: string;
-    listCoordinates: CellValue[];
+    listCoordinates: Coordinates[];
 }
 
 interface DecodedToken {
@@ -21,7 +21,7 @@ const EnvEnpoint = (): string => {
     }
 }
 
-const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, checkingPlayer: string): ReturnResult => {
+const checkWinner = (gameboard: Array<Array<Coordinates>>, x: number, y: number, checkingPlayer: string): ReturnResult => {
     const result: ReturnResult = {
         winner: "",
         listCoordinates: []
@@ -106,7 +106,7 @@ const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, c
     return result;
 }
 
-const getPointValue = (gameboard: Array<Array<CellValue>>, x: number, y: number): string => {
+const getPointValue = (gameboard: Array<Array<Coordinates>>, x: number, y: number): string => {
     try {
         return gameboard[x][y].userId;
     } catch (error) {

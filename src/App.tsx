@@ -9,7 +9,8 @@ import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { MatchDTO, RoomDTO, UserDTO } from './models/Models';
+import { Coordinates, MatchDTO, RoomDTO, UserDTO } from './models/Models';
+import { getCurrentMatchByUserId, getGameBoard } from './services/GameServices';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -22,6 +23,7 @@ const App: FC = () => {
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
+  const [gameBoard, setGameBoard] = useState<Array<Array<Coordinates>>>([[]]);
 
   const checkIsLoggedIn = (): void => {
     setLoading(true);
@@ -96,6 +98,16 @@ const App: FC = () => {
         connectionId: res.responseData.connectionId
       }
       setUser(currentUser);
+      if(res.responseData.isPlaying) {
+        const match = await getCurrentMatchByUserId(res.responseData.id);
+        if(match.isSuccess) {
+          setMatchInfo(match.responseData);
+          const gameBoard = await getGameBoard(match.responseData.matchId);
+          if(gameBoard.isSuccess) {
+            setGameBoard(gameBoard.responseData);
+          }
+        }
+      }
       return res.responseData.roomId ? true : false;
     }
     return false;
@@ -140,7 +152,7 @@ const App: FC = () => {
 
       {
         loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
-          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo, matchInfo, setMatchInfo }}>
+          <UserContext.Provider value={{ user, setUser, redirectToLogin, setRedirectToLogin, connection, setConnection, roomInfo, setRoomInfo, matchInfo, setMatchInfo, gameBoard, setGameBoard }}>
             <PlayerContext.Provider value={[player, setPlayer]}>
               <StepContext.Provider value={[step, setStep]}>
                 {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} checkIsLoggedIn={checkIsLoggedIn}/> : <></>}

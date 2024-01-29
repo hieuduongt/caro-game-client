@@ -1,3 +1,10 @@
+export interface Coordinates {
+    userId: string;
+    player: Player | string;
+    x: number;
+    y: number;
+}
+
 export interface LoginDTO {
     username: string;
     password: string;
@@ -93,6 +100,7 @@ export interface GameDTO {
     roomId: string;
     matchId: string;
 }
+
 export interface ReceiveCoordinates {
     x: number;
     y: number;
