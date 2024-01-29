@@ -13,6 +13,6 @@ export const finishGame = async (data: MatchDTO) : Promise<ResponseData<any>> =>
 }
 
 export const move = async (data: GameDTO) : Promise<ResponseData<any>> => {
-    const url = `${EnvEnpoint()}/api/Game/finish-match`;
+    const url = `${EnvEnpoint()}/api/Game/move`;
     return post<undefined>(url, data);
 }

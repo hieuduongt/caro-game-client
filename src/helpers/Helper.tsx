@@ -106,7 +106,7 @@ const checkWinner = (gameboard: Array<Array<CellValue>>, x: number, y: number, c
     return result;
 }
 
-const getPointValue = (gameboard: Array<Array<CellValue>>, x: number, y: number) => {
+const getPointValue = (gameboard: Array<Array<CellValue>>, x: number, y: number): string => {
     try {
         return gameboard[x][y].userId;
     } catch (error) {

@@ -70,15 +70,6 @@ export interface Message {
     isMyMessage: boolean;
 }
 
-export interface GameDTO {
-    x: number;
-    y: number;
-    userId: string;
-    connectionId: string;
-    competitorId: string;
-    competitoConnectionId: string;
-}
-
 export interface MatchDTO {
     userInMatches: UserInMatches[];
     roomId: string;
@@ -95,8 +86,21 @@ export interface UserInMatches {
     time: any;
 }
 
+export interface GameDTO {
+    ReceiveCoordinates: ReceiveCoordinates;
+    competitorId: string;
+    competitorConnectionId: string;
+    roomId: string;
+    matchId: string;
+}
 export interface ReceiveCoordinates {
     x: number;
     y: number;
     userId: string;
+    player: Player;
+}
+
+export enum Player {
+    PlayerX,
+    PlayerO
 }

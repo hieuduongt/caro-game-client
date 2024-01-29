@@ -4,27 +4,27 @@ import { InGameContext, UserContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
-import { ReceiveCoordinates, UserInMatches } from '../../models/Models';
-import { finishGame } from '../../services/GameServices';
+import { GameDTO, Player, ReceiveCoordinates, UserInMatches } from '../../models/Models';
+import { finishGame, move } from '../../services/GameServices';
 
 interface GameGridProps extends React.HTMLAttributes<HTMLDivElement> {
-    initialPlayer: string;
+    initialPlayer: Player;
 }
 
 export interface CellValue {
     userId: string;
-    icon: string;
+    icon: Player | string;
     x: number;
     y: number;
 }
 
 const playerIcons = [
     {
-        playerName: "playerX",
+        playerName: Player.PlayerX,
         icon: <MdClose size={28} color='blue' />
     },
     {
-        playerName: "playerO",
+        playerName: Player.PlayerO,
         icon: <FaRegCircle size={20} color='red' />
     }
 ]
@@ -34,7 +34,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
     const { connection, roomInfo, matchInfo, user } = useContext(UserContext);
     const { initialPlayer } = props;
     const [gameBoard, setGameBoard] = useState<Array<Array<CellValue>>>([[]]);
-    const [player, setPlayer] = useState<string>("");
+    const [player, setPlayer] = useState<Player>();
     const [isWinner, setIsWinner] = useState<string>("");
 
     const resetGameBoard = (): void => {
@@ -55,31 +55,30 @@ const GameGrid: FC<GameGridProps> = (props) => {
         setIsWinner("");
     }
 
-    const updateGameBoard = (x: number, y: number, userId: string, icon: string): void => {
-        const newBoard = [...gameBoard];
-        newBoard[x][y] = {
-            userId: userId,
-            icon: icon,
-            x: x,
-            y: y
-        }
-        setGameBoard(newBoard);
+    const updateGameBoard = (x: number, y: number, userId: string, icon: Player): void => {
+        setGameBoard((gameBoard) => {
+            const newBoard = [...gameBoard];
+            newBoard[x][y] = {
+                userId: userId,
+                icon: icon,
+                x: x,
+                y: y
+            }
+            return newBoard;
+        });
     }
 
     const switchTurn = (data: ReceiveCoordinates): void => {
+        console.log("hhhhhhhh")
         document.querySelector(".current")?.classList.remove("current");
-        updateGameBoard(data.x, data.y, data.userId, player === "playerX" ? "playerO" : "playerX");
-        const winner = checkWinner(gameBoard, data.x, data.y, data.userId);
-        if (winner.winner) {
-
-
-        } else {
-            setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
-        }
+        updateGameBoard(data.x, data.y, data.userId, data.player);
+        document.querySelector(`[custom-coordinates="${data.x}, ${data.y}"]`)?.classList.add("current");
     }
 
     useEffect(() => {
+        resetGameBoard();
         connection.on("UpdateTurn", (data: ReceiveCoordinates) => {
+            console.log(data);
             switchTurn(data);
         });
     }, []);
@@ -97,7 +96,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
         document.querySelector(".current")?.classList.remove("current");
         updateGameBoard(x, y, user.id, player);
         e.target.setAttribute("selected", "true");
-        const winner = checkWinner(gameBoard, x, y, initialPlayer);
+        const winner = checkWinner(gameBoard, x, y, user.id);
         if (winner.winner) {
             matchInfo.userInMatches.forEach((u: UserInMatches) => {
                 if (u.id === user.id) {
@@ -113,7 +112,25 @@ const GameGrid: FC<GameGridProps> = (props) => {
             }
             updateGameBoard(x, y, user.id, player);
         } else {
-            setPlayer(initialPlayer === "playerX" ? "playerO" : "playerX");
+            const coordinates: ReceiveCoordinates = {
+                x: x,
+                y: y,
+                player: player,
+                userId: user.id
+            }
+            const competitor = matchInfo.userInMatches.find((uim: UserInMatches) => uim.id !== user.id);
+            const gameData: GameDTO = {
+                competitorConnectionId: competitor.connectionId,
+                competitorId: competitor.id,
+                ReceiveCoordinates: coordinates,
+                matchId: matchInfo.matchId,
+                roomId: matchInfo.roomId
+            }
+            const res = await move(gameData);
+            if (res && res.isSuccess) {
+                connection.invoke("PauseCountdown", matchInfo.matchId, user.id);
+                connection.invoke("ResumeCountdown", matchInfo.matchId, competitor.id);
+            }
         }
     }
 

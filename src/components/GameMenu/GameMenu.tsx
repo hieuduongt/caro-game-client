@@ -135,7 +135,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("FinishMessage", async (result: boolean): Promise<void> => {
-            console.log(result)
             if (result) {
                 api.success({
                     message: 'Info',
@@ -161,6 +160,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("CurrentMatch", async (match: MatchDTO): Promise<void> => {
+            console.log(match);
             setMatchInfo(match);
             setRoomOwnerTime(match.userInMatches.find(u => u.isRoomOwner)?.timeLeft || 300);
             setCompetitorTime(match.userInMatches.find(u => !u.isRoomOwner)?.timeLeft || 300);
