@@ -121,7 +121,21 @@ const App: FC = () => {
                 setYourTurn(false);
               }
             }
+          } else {
+            api.error({
+              message: 'Connect Failed',
+              description: "Cannot connect to server with error: " + listCoordinates.errorMessage,
+              duration: -1,
+              placement: "top"
+            });
           }
+        } else {
+          api.error({
+            message: 'Connect Failed',
+            description: "Cannot connect to server with error: " + match.errorMessage,
+            duration: -1,
+            placement: "top"
+          });
         }
       }
       return res.responseData.roomId ? true : false;

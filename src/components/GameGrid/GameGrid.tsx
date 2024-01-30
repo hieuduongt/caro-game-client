@@ -141,8 +141,6 @@ const GameGrid: FC<GameGridProps> = (props) => {
         }
         const res = await move(gameData);
         if (res && res.isSuccess) {
-            connection.invoke("PauseCountdown", matchInfo.matchId, user.id);
-            connection.invoke("ResumeCountdown", matchInfo.matchId, competitor.id);
             updateGameBoard(res.responseData.x, res.responseData.y, res.responseData.userId, res.responseData.player, res.responseData.id, res.responseData.current, res.responseData.winPoint);
             setYourTurn(false);
         }
@@ -164,10 +162,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
                     updateGameBoard(lc.x, lc.y, user.id, player, lc.id, false, true);
                 });
             }
-            const res = await finishGame(matchInfo);
-            if (res.isSuccess) {
-                connection.invoke("StopMatch", matchInfo.matchId);
-            }
+            await finishGame(matchInfo);
         }
     }
 

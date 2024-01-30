@@ -14,7 +14,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo} = useContext(AppContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo } = useContext(AppContext);
     const [guest, setGuest] = useState<UserDTO>();
     const [messages, setMessages] = useState<Message[]>();
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
@@ -62,7 +62,12 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             await getRoomInfo();
         });
 
-        connection.on("StartMessage", async (): Promise<void> => {
+        connection.on("start", (match: MatchDTO): void => {
+            setNewGame((prev: number) => {
+                return prev + 1;
+            });
+            setStart(true);
+            setMatchInfo(match);
             setMessages((prev) => {
                 const newMess: Message[] = prev && prev?.length ? [...prev] : [];
                 const mess: Message = {
@@ -74,13 +79,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 newMess.push(mess);
                 return newMess;
             });
-            setNewGame(newGame + 1);
-            setStart(true);
-        });
-
-        connection.on("MatchStarted", (match: MatchDTO): void => {
-            setStart(true);
-            setMatchInfo(match);
+            setRoomOwnerTime(300);
+            setCompetitorTime(300);
         });
 
         connection.on("UserJoined", async (userName: string): Promise<void> => {
@@ -107,7 +107,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             onRoomClosed();
         });
 
-        connection.on("TimeUpdate", (time: number, userId: string, isRoomOwner: boolean): void => {
+        connection.on("TimeUpdate", (time: number, isRoomOwner: boolean): void => {
             if (isRoomOwner) {
                 setRoomOwnerTime(time);
             } else {
@@ -120,30 +120,21 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("Winner", async (): Promise<void> => {
-            api.success({
-                message: 'Info',
-                description: "You win",
-                duration: 5,
-                placement: "top"
-            });
             await getRoomInfo();
             setStart(false);
         });
 
         connection.on("Loser", async (matchId: string): Promise<void> => {
-            api.error({
-                message: 'Info',
-                description: "You lose",
-                duration: 5,
-                placement: "top"
-            });
             await getRoomInfo();
             setStart(false);
         });
 
-        connection.on("FinishMessageGroup", async (): Promise<void> => {
+        connection.on("StartGroup", async (): Promise<void> => {
             await getRoomInfo();
-            setStart(false);
+        });
+
+        connection.on("FinishGroup", async (): Promise<void> => {
+            await getRoomInfo();
         });
 
         cLoaded.current = true;
@@ -160,20 +151,15 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenTimesUp = async (match: MatchDTO, loseUserId: string): Promise<void> => {
-        if (user.isRoomOwner) {
-            match.userInMatches.forEach(u => {
-                if (u.id !== loseUserId) {
-                    u.isWinner = true;
-                } else {
-                    u.isWinner = false;
-                }
-                delete u.time;
-            });
-            const res = await finishGame(match);
-            if (res.isSuccess) {
-                connection.invoke("StopMatch", match.matchId);
+        match.userInMatches.forEach(u => {
+            if (u.id === loseUserId) {
+                u.isWinner = false;
+            } else {
+                u.isWinner = true;
             }
-        }
+            delete u.time;
+        });
+        await finishGame(match);
         await getRoomInfo();
         setStart(false);
     }
@@ -207,7 +193,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             guestId: isOwner ? undefined : yourId,
             members: roomInfo.members
         }
-
+        await handleWhenSitting();
         const res = await leaveRoom(room);
 
         if (res.isSuccess === true) {
@@ -284,7 +270,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const handleWhenStart = async (): Promise<void> => {
         const res = await startGame(roomInfo);
         if (res.isSuccess === true) {
-            connection.invoke("StartMatch", res.responseData);
+            setMatchInfo(res.responseData);
             setNewGame(newGame + 1);
             setStart(true);
             setYourTurn(true);
