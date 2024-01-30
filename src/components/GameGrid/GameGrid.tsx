@@ -124,7 +124,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
         if(!yourTurn) return;
         if (player !== initialPlayer) return;
         if (!e || !e.target || e.target.nodeName.toLowerCase() !== "td") return;
-        if (e.target.getAttribute("custom-selected")) return;
+        if (e.target.getAttribute("custom-selected") === "true") return;
 
         const coordinates: Coordinates = {
             x: x,
@@ -184,7 +184,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
                                             className={`${itemX.winPoint ? "win" : ""} ${itemX.current && user.id !== itemX.userId ? "current" : ""}`}
                                             onClick={(e) => handleClick(e, y, x)}
                                             custom-coordinates={`${y}, ${x}`}
-                                            custom-selected={itemX.userId? true : false}
+                                            custom-selected={itemX.userId? "true" : "false"}
                                             style={{cursor: yourTurn ? "pointer" : "not-allowed"}}
                                             >
                                                 {

@@ -3,9 +3,9 @@ import './GameMenu.css';
 import { Button, Form, Input, Flex, notification, Tooltip } from 'antd';
 import { AiOutlineSend } from "react-icons/ai";
 import { AppContext } from '../../helpers/Context';
-import { MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
+import { AccountStatus, MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
 import { getRoom, leaveRoom } from '../../services/RoomServices';
-import { updateUserSlot } from '../../services/UserServices';
+import { getUser, updateUserSlot } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
 
@@ -99,7 +99,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
 
         connection.on("RoomOwnerChanged", async (id: string): Promise<void> => {
-            changeOwner(id);
+            await changeOwner(id);
             await getRoomInfo();
         });
 
@@ -121,11 +121,13 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
         connection.on("Winner", async (): Promise<void> => {
             await getRoomInfo();
+            setMatchInfo(undefined);
             setStart(false);
         });
 
         connection.on("Loser", async (matchId: string): Promise<void> => {
             await getRoomInfo();
+            setMatchInfo(undefined);
             setStart(false);
         });
 
@@ -164,14 +166,18 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         setStart(false);
     }
 
-    const changeOwner = (id: string): void => {
+    const changeOwner = async (id: string): Promise<void> => {
         if (id === user.id) {
-            api.info({
-                message: 'Info',
-                description: "the Room owner is quit, now you are room owner",
-                duration: 5,
-                placement: "top"
-            });
+            const res = await getUser(id);
+            if(res.isSuccess) {
+                setUser(res.responseData);
+                api.info({
+                    message: 'Info',
+                    description: "the Room owner is quit, now you are room owner",
+                    duration: 5,
+                    placement: "top"
+                });
+            }
         }
     }
 
@@ -193,17 +199,18 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             guestId: isOwner ? undefined : yourId,
             members: roomInfo.members
         }
-        await handleWhenSitting();
         const res = await leaveRoom(room);
 
         if (res.isSuccess === true) {
-            setStep(2);
             const newUser: UserDTO = user;
             newUser.roomId = "";
             newUser.sitting = false;
             newUser.isRoomOwner = false;
+            newUser.isPlaying = false;
+            newUser.isRoomOwner = false;
             setUser(newUser);
             setRoomInfo(undefined);
+            setStep(2);
         } else {
             api.warning({
                 message: 'Error',
@@ -215,15 +222,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenSitting = async (): Promise<void> => {
-        if (start) {
-            api.error({
-                message: 'Error',
-                description: "You cannot leave when playing!",
-                duration: 3,
-                placement: "top"
-            });
-            return;
-        }
         if (user.isRoomOwner) {
             api.error({
                 message: 'Error',
@@ -310,7 +308,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         <></>
                 }
 
-                <Button type="default" danger onClick={handleWhenLeave}>
+                <Button type="default" disabled={start} danger onClick={handleWhenLeave}>
                     Leave
                 </Button>
             </Flex>

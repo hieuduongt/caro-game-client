@@ -3,13 +3,13 @@ import GameGrid from "../GameGrid/GameGrid";
 import GameMenu from "../GameMenu/GameMenu";
 import './Ingame.css'
 import { AppContext } from "../../helpers/Context";
-import { MatchDTO, Player } from "../../models/Models";
+import { Player } from "../../models/Models";
 interface InGameProps extends React.HTMLAttributes<HTMLDivElement> {
 
 }
 
 const InGame: FC<InGameProps> = (props) => {
-  const { user, connection, matchInfo, setMatchInfo, setStart, newGame, setNewGame } = useContext(AppContext);
+  const { user, matchInfo, setStart } = useContext(AppContext);
   useEffect(() => {
     if ((user && user.isPlaying) || matchInfo) {
       setStart(true);

@@ -102,10 +102,13 @@ const App: FC = () => {
       setUser(currentUser);
       if (res.responseData.isPlaying) {
         const match = await getCurrentMatchByUserId(res.responseData.id);
+        console.log(match)
         if (match.isSuccess) {
           setMatchInfo(match.responseData);
           const listCoordinates = await getListCoordinates(match.responseData.matchId);
+          console.log(listCoordinates)
           if (listCoordinates.isSuccess) {
+            
             setListCoordinates(listCoordinates.responseData);
             const currentCoordinate = listCoordinates.responseData.find(lc => lc.current === true);
             if(currentCoordinate) {
