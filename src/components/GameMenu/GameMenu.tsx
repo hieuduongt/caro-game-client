@@ -1,6 +1,7 @@
 import { FC, useContext, useEffect, useRef, useState } from 'react';
 import './GameMenu.css';
 import { Button, Form, Input, Flex, notification, Tooltip } from 'antd';
+import { CloseOutlined } from "@ant-design/icons";
 import { AiOutlineSend } from "react-icons/ai";
 import { AppContext } from '../../helpers/Context';
 import { AccountStatus, MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
@@ -15,8 +16,8 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const GameMenu: FC<GameMenuProps> = (props) => {
     const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo } = useContext(AppContext);
-    const [guest, setGuest] = useState<UserDTO>();
     const [messages, setMessages] = useState<Message[]>();
+    const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
     const [competitorTime, setCompetitorTime] = useState<number>(0);
     const cLoaded = useRef<boolean>(false);
@@ -27,11 +28,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             const currentRoom = await getRoom(user.roomId);
             if (currentRoom.isSuccess) {
                 setRoomInfo(currentRoom.responseData);
-                const guest = currentRoom.responseData.members!.find((m: UserDTO) => m.sitting && !m.isRoomOwner);
-                if (guest) {
-                    setGuest(guest);
+                const sittedMember = currentRoom.responseData.members?.find(m => m.sitting && !m.isRoomOwner);
+                if (sittedMember) {
+                    setSitted(true);
                 } else {
-                    setGuest(undefined);
+                    setSitted(false);
                 }
             }
         }
@@ -40,6 +41,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     useEffect(() => {
         getRoomInfo();
     }, [user]);
+
     useEffect(() => {
         if (cLoaded.current) return;
 
@@ -56,6 +58,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 return newMess;
             });
             await getRoomInfo();
+            setSitted(false);
         });
 
         connection.on("UserSitted", async (): Promise<void> => {
@@ -169,7 +172,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const changeOwner = async (id: string): Promise<void> => {
         if (id === user.id) {
             const res = await getUser(id);
-            if(res.isSuccess) {
+            if (res.isSuccess) {
                 setUser(res.responseData);
                 api.info({
                     message: 'Info',
@@ -181,6 +184,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         }
     }
 
+    console.log(user);
+
     const onFinish = (values: any) => {
         console.log('Success:', values);
     };
@@ -189,7 +194,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         message?: string;
     };
 
-    const handleWhenLeave = async (): Promise<void> => {
+    const handleWhenLeaveRoom = async (): Promise<void> => {
         const yourId = user.id;
         const isOwner: boolean = roomInfo.members.find((m: UserDTO) => m.id === yourId && m.isRoomOwner === true) ? true : false;
         const room: RoomDTO = {
@@ -222,46 +227,24 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     }
 
     const handleWhenSitting = async (): Promise<void> => {
+        if (user.isRoomOwner || sitted) return;
+        const res = await updateUserSlot(user.id, true);
+        if (res.isSuccess) {
+            setSitted(true);
+        }
+    }
+
+    const handleWhenLeaveSitting = async (): Promise<void> => {
+        if (!sitted) return;
+        let userId: string;
         if (user.isRoomOwner) {
-            api.error({
-                message: 'Error',
-                description: "Your action cannot be done!",
-                duration: 3,
-                placement: "top"
-            });
+            userId = roomInfo.members.find((m: UserDTO) => !m.isRoomOwner && m.sitting).id;
         } else {
-            if (!guest) {
-                const res = await updateUserSlot(user.id, true);
-                if (res.isSuccess) {
-                    setGuest(user);
-                } else {
-                    api.error({
-                        message: 'Error',
-                        description: res.errorMessage,
-                        duration: 3,
-                        placement: "top"
-                    });
-                }
-            } else if (guest.id === user.id) {
-                const res = await updateUserSlot(user.id, false);
-                if (res.isSuccess) {
-                    setGuest(user);
-                } else {
-                    api.error({
-                        message: 'Error',
-                        description: res.errorMessage,
-                        duration: 3,
-                        placement: "top"
-                    });
-                }
-            } else {
-                api.error({
-                    message: 'Error',
-                    description: "Already have user",
-                    duration: 3,
-                    placement: "top"
-                });
-            }
+            userId = user.id;
+        }
+        const res = await updateUserSlot(userId, false);
+        if (res.isSuccess) {
+            setSitted(false);
         }
     }
 
@@ -284,40 +267,25 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         }
     }
 
-    const handleWhenKick = async (): Promise<void> => {
-
-    }
     return (
         <div className='game-menu'>
             {contextHolder}
             <Flex wrap="wrap" gap="small">
                 {
                     user.isRoomOwner ?
-                        <Button type="primary" disabled={!guest} onClick={handleWhenStart}>
+                        <Button type="primary" disabled={!sitted} onClick={handleWhenStart}>
                             Start
                         </Button> :
                         <></>
                 }
-                {
-                    user.isRoomOwner ?
-                        <Tooltip placement="topLeft" title={"Kick the user, who was sitting!"} arrow>
-                            <Button type="default" disabled={!guest} danger onClick={handleWhenKick}>
-                                Kick
-                            </Button>
-                        </Tooltip> :
-                        <></>
-                }
 
-                <Button type="default" disabled={start} danger onClick={handleWhenLeave}>
-                    Leave
+                <Button type="default" disabled={start} danger onClick={handleWhenLeaveRoom}>
+                    Leave This Room
                 </Button>
             </Flex>
             <div className='players'>
                 <div className='player'>
                     <div className='player-title'>
-                        <div className='name'>
-                            Room Owner
-                        </div>
                         <div className='time'>
                             {start ?
                                 <Time time={roomOwnerTime} /> : <></>
@@ -339,21 +307,21 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 </div>
                 <div className="player">
                     <div className='player-title'>
-                        <div className='name'>
-                            Competitor
-                        </div>
+                        <Button type="primary" danger shape="round" disabled={user.isRoomOwner && sitted ? false : !sitted} size='small' icon={<CloseOutlined />} onClick={handleWhenLeaveSitting}>
+                            {user.isRoomOwner ? "Kick" : "Leave"}
+                        </Button>
                         <div className='time'>
                             {start ?
                                 <Time time={competitorTime} /> : <></>
                             }
                         </div>
                     </div>
-                    <div className={`slot ${user.isRoomOwner ? "full" : ""} ${guest ? "joined" : ""} player-info ${guest ? "joined" : ""}`} onClick={handleWhenSitting}>
+                    <div className={`slot ${user.isRoomOwner ? "full" : ""} ${sitted ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
                         <div className='info'>
                             <div className='avatar'>
                                 <img src="human.jpg" alt="" />
                             </div>
-                            <div className='player-name'>{guest?.userName}</div>
+                            <div className='player-name'>{roomInfo?.members.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.userName}</div>
                         </div>
                         <div className='competition-history-info'>
                             <div className='number-of-wins'>Wins: { }</div>

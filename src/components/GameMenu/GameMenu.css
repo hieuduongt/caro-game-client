@@ -8,7 +8,7 @@
   display: flex;
   flex-wrap: nowrap;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   margin-bottom: 20px;
 }
@@ -28,11 +28,14 @@
 }
 
 .player-title {
-  text-align: center;
   font-weight: 600;
   display: flex;
-  justify-content: center;
   padding: 5px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  align-items: center;
+  gap: 10px;
 }
 
 .name {
@@ -165,8 +168,8 @@
 
 @media only screen and (max-width: 1140px) {
   .game-menu {
-      max-width: 800px;
-      margin-left: 0 !important;
-      margin-bottom: 20px;
+    max-width: 800px;
+    margin-left: 0 !important;
+    margin-bottom: 20px;
   }
 }
