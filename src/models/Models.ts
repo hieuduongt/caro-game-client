@@ -47,6 +47,12 @@ export interface RoomDTO {
     members?: UserDTO[];
 }
 
+export interface ActionRoomDTO {
+    id: string;
+    userId: string;
+    isRoomOwner?: boolean;
+}
+
 export interface UserDTO {
     id: string;
     roomId: string;

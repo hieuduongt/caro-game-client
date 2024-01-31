@@ -2,11 +2,11 @@ import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
 import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip } from 'antd';
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import { RoomDTO, UserDTO, Pagination, Status } from "../../models/Models";
-import { createRoom, getAllRooms, joinRoom } from "../../services/RoomServices";
+import { RoomDTO, UserDTO, Pagination, Status, ActionRoomDTO } from "../../models/Models";
+import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
-import { getAllUsers } from "../../services/UserServices";
+import { getAllUsers, getUser } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
 import { RiLoginCircleLine } from "react-icons/ri";
@@ -42,7 +42,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
-            
+
             sorter: (a, b) => {
                 if (a.name < b.name) {
                     return -1;
@@ -161,15 +161,13 @@ const RoomList: FC<RoomListProps> = (props) => {
         setUserReloadState(false);
     }
 
-    useEffect(() => {
-        getListRooms(roomSearchKeywords || "", 1, 20);
-        getListUsers(userSearchKeywords || "", 1, 20);
-    }, []);
 
     useEffect(() => {
         if (cLoaded.current) return;
+        getListRooms(roomSearchKeywords || "", 1, 20);
+        getListUsers(userSearchKeywords || "", 1, 20);
         if (connection) {
-            connection.on("RoomUpdating", async () => {
+            connection.on("GlobalRoomUpdating", async () => {
                 await getListRooms(roomSearchKeywords, 1, 20);
             });
             connection.on("UserLoggedIn", async (message: string) => {
@@ -214,17 +212,20 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
-        const currentRoom: RoomDTO = {
+        const currentRoom: ActionRoomDTO = {
             id: room.id,
-            name: room.name,
-            guestId: user.id
+            userId: user.id
         }
-        const newUser: UserDTO = user;
-        newUser.roomId = room.id;
-        setUser(newUser);
         const res = await joinRoom(currentRoom);
         if (res.isSuccess) {
-            setStep(3);
+            const room = await getRoom(currentRoom.id);
+            const newUser: UserDTO = user;
+            if(room.isSuccess && room.responseData) {
+                setRoomInfo(room.responseData);
+                newUser.roomId = room.responseData.id;
+                setUser(newUser);
+                setStep(3);
+            }
         }
     }
 

@@ -15,19 +15,20 @@ import { getCurrentMatchByUserId, getListCoordinates } from './services/GameServ
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
   const [loading, setLoading] = useState<boolean>(false);
+  const [isConnected, setConnected] = useState<boolean>(false);
   const [yourTurn, setYourTurn] = useState<boolean>(false);
   const [newGame, setNewGame] = useState<number>(0);
   const [start, setStart] = useState<boolean>(false);
   const cLoaded = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(0);
   const [user, setUser] = useState<UserDTO>();
   const [redirectToLogin, setRedirectToLogin] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
 
-  const checkIsLoggedIn = (): void => {
+  const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
     const token = getAuthToken();
     if (token) {
@@ -38,7 +39,7 @@ const App: FC = () => {
         setStep(1);
         setLoading(false);
       } else {
-        connectToGameHub();
+        await connectToGameHub();
       }
     } else {
       setStep(1);
@@ -46,7 +47,7 @@ const App: FC = () => {
     }
   }
 
-  const connectToGameHub = () => {
+  const connectToGameHub = async () => {
     const hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${EnvEnpoint()}/connection/hub/game`, {
         accessTokenFactory: () => getAuthToken(),
@@ -57,17 +58,9 @@ const App: FC = () => {
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Debug)
       .build();
-
-    hubConnection.start().then(async () => {
+    hubConnection.start().then(() => {
       setConnection(hubConnection);
-      cLoaded.current = true;
-      const isInRoom = await checkIfIsInRoom();
-      if (isInRoom) {
-        setStep(3);
-      } else {
-        setStep(2);
-      }
-      setLoading(false);
+      setConnected(true);
     }).catch((error) => {
       api.error({
         message: 'Connect Failed',
@@ -75,7 +68,6 @@ const App: FC = () => {
         duration: -1,
         placement: "top"
       });
-      setLoading(false);
     });
   }
 
@@ -102,23 +94,21 @@ const App: FC = () => {
       setUser(currentUser);
       if (res.responseData.isPlaying) {
         const match = await getCurrentMatchByUserId(res.responseData.id);
-        console.log(match)
         if (match.isSuccess) {
           setMatchInfo(match.responseData);
           const listCoordinates = await getListCoordinates(match.responseData.matchId);
-          console.log(listCoordinates)
           if (listCoordinates.isSuccess) {
-            
+
             setListCoordinates(listCoordinates.responseData);
             const currentCoordinate = listCoordinates.responseData.find(lc => lc.current === true);
-            if(currentCoordinate) {
-              if(currentCoordinate.userId === currentUser?.id) {
+            if (currentCoordinate) {
+              if (currentCoordinate.userId === currentUser?.id) {
                 setYourTurn(false);
               } else {
                 setYourTurn(true);
               }
             } else {
-              if(currentUser?.isRoomOwner === true){
+              if (currentUser?.isRoomOwner === true) {
                 setYourTurn(true);
               } else {
                 setYourTurn(false);
@@ -157,7 +147,21 @@ const App: FC = () => {
     if (cLoaded.current)
       return
     checkIsLoggedIn();
+    cLoaded.current = true;
   }, []);
+
+  useEffect(() => {
+    if (isConnected) {
+      checkIfIsInRoom().then(res => {
+        if (res) {
+          setStep(3);
+        } else {
+          setStep(2);
+        }
+        setLoading(false);
+      });
+    }
+  }, [isConnected])
 
   return (
     <div className='container'>

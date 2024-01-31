@@ -7,7 +7,7 @@ import { setAuthToken } from "../../helpers/Helper";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
-    connectToGameHub: () => void;
+    connectToGameHub: () => Promise<void>;
 }
 
 const Home: FC<HomeProps> = (props) => {
@@ -37,7 +37,7 @@ const Home: FC<HomeProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     loginForm.resetFields();
                     setAuthToken(result.responseData);
-                    connectToGameHub();
+                    await connectToGameHub();
                 } else {
                     for (let it of result.errorMessage) {
                         api.error({
