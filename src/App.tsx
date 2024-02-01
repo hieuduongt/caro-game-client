@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import './App.css';
-import { notification, Spin, Popover, Button } from 'antd';
+import { notification, Spin, Popover, Button, Avatar, Affix } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
@@ -166,8 +166,8 @@ const App: FC = () => {
   return (
     <div className='container'>
       {contextHolder}
-      {user ?
-        <div className={`user-profile`}>
+      {user && step === 2 ?
+        <Affix offsetTop={20} style={{ marginBottom: 10}}>
           <Popover placement="bottom" title={""} content={
             <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
               <Button type="link">Your profile</Button>
@@ -175,14 +175,12 @@ const App: FC = () => {
             </div>
 
           } arrow={true} trigger="click">
-            <div className='profile'>
-              <div className='avatar'>
-                <img src="human.jpg" alt="" />
-              </div>
-              <div className='user-name'>{user.userName}</div>
-            </div>
+            <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} size="large" gap={2}>
+              {user.userName}
+            </Avatar>
+
           </Popover>
-        </div> :
+        </Affix> :
         <></>
       }
 

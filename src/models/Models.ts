@@ -113,3 +113,22 @@ export enum Player {
     PlayerX,
     PlayerO
 }
+
+export const Roles = [
+    {
+        color: "#f50",
+        value: "admin"
+    },
+     {
+        color: "#87d068",
+        value: "manager"
+    },
+    {
+        color: "magenta",
+        value: "user"
+    },
+    {
+        color: "",
+        value: "guest"
+    }
+]

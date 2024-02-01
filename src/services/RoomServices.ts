@@ -12,6 +12,11 @@ export const getRoom = async (id: string) : Promise<ResponseData<RoomDTO>> => {
     return get<RoomDTO>(url);
 }
 
+export const getRoomByUser = async (id: string) : Promise<ResponseData<RoomDTO>> => {
+    const url = `${EnvEnpoint()}/api/Game/room-by-user/${id}`;
+    return get<RoomDTO>(url);
+}
+
 export const joinRoom = async (data: ActionRoomDTO) : Promise<ResponseData<undefined>> => {
     const url = `${EnvEnpoint()}/api/Game/join-room`;
     return post(url, data);

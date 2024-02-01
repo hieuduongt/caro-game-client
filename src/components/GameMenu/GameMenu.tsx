@@ -1,11 +1,11 @@
 import { FC, useContext, useEffect, useRef, useState } from 'react';
 import './GameMenu.css';
-import { Button, Form, Input, Flex, notification, Tooltip } from 'antd';
+import { Button, Form, Input, Flex, notification } from 'antd';
 import { CloseOutlined } from "@ant-design/icons";
 import { AiOutlineSend } from "react-icons/ai";
 import { AppContext } from '../../helpers/Context';
-import { ActionRoomDTO, MatchDTO, Message, RoomDTO, UserDTO } from '../../models/Models';
-import { getRoom, leaveRoom, updateSitting } from '../../services/RoomServices';
+import { ActionRoomDTO, MatchDTO, Message, UserDTO } from '../../models/Models';
+import { getRoomByUser, leaveRoom, updateSitting } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
@@ -24,7 +24,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
-        const currentRoom = await getRoom(user.roomId);
+        const currentRoom = await getRoomByUser(user.id);
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
             const sittedMember = currentRoom.responseData.members?.find(m => m.sitting && !m.isRoomOwner);
@@ -48,7 +48,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             const newMess: Message[] = prev && prev?.length ? [...prev] : [];
             const mess: Message = {
                 userId: user.id,
-                userName: "",
+                userName: userName||"",
                 isMyMessage: false,
                 message: message
             }
@@ -82,7 +82,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             });
         });
 
-        connection.on("start", (match: MatchDTO): void => {
+        connection.on("MatchStartResponseForInMatchMember", (match: MatchDTO): void => {
             setNewGame((prev: number) => {
                 return prev + 1;
             });
@@ -119,28 +119,28 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             await handleWhenTimesUp(match, loseUserId);
         });
 
-        connection.on("Winner", async (): Promise<void> => {
+        connection.on("MatchResponseForWinner", async (): Promise<void> => {
             await getRoomInfo();
             setMatchInfo(undefined);
             setStart(false);
         });
 
-        connection.on("Loser", async (matchId: string): Promise<void> => {
+        connection.on("MatchResponseForLoser", async (matchId: string): Promise<void> => {
             await getRoomInfo();
             setMatchInfo(undefined);
             setStart(false);
         });
 
-        connection.on("StartGroup", async (): Promise<void> => {
+        connection.on("MatchStartResponseForInRoomMembers", async (): Promise<void> => {
             await getRoomInfo();
         });
 
-        connection.on("FinishGroup", async (): Promise<void> => {
+        connection.on("MatchFinishResponseForInRoomMembers", async (): Promise<void> => {
             await getRoomInfo();
         });
 
         cLoaded.current = true;
-    }, [user]);
+    }, []);
 
     const onRoomClosed = async (): Promise<void> => {
         await getUserInfo();

@@ -1,12 +1,12 @@
 import { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
-import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip } from 'antd';
+import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar, Popover } from 'antd';
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import { RoomDTO, UserDTO, Pagination, Status, ActionRoomDTO } from "../../models/Models";
+import { RoomDTO, UserDTO, Pagination, Status, ActionRoomDTO, Roles } from "../../models/Models";
 import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
-import { getTokenProperties } from "../../helpers/Helper";
-import { getAllUsers, getUser } from "../../services/UserServices";
+import { getTokenProperties, removeAuthToken } from "../../helpers/Helper";
+import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
 import { RiLoginCircleLine } from "react-icons/ri";
@@ -56,8 +56,17 @@ const RoomList: FC<RoomListProps> = (props) => {
         },
         {
             title: 'Members in room',
-            dataIndex: 'numberOfUsers',
-            key: 'numberOfUsers',
+            dataIndex: 'members',
+            key: 'members',
+            render: (members: UserDTO[]) => {
+                return (
+                    <Avatar.Group maxCount={4} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
+                        {members.map(m => (
+                            <Avatar style={{ backgroundColor: '#2db7f5' }}>{m.userName}</Avatar>
+                        ))}
+                    </Avatar.Group>
+                )
+            }
         },
         {
             title: 'Status',
@@ -104,23 +113,43 @@ const RoomList: FC<RoomListProps> = (props) => {
         {
             title: 'Role',
             dataIndex: 'role',
-            key: 'role'
+            key: 'role',
+            render: (roles: string[]) => {
+                const data = Roles.find(r => r.value === roles[0]);
+                return (
+                    <Tag color={data?.color}>{data?.value}</Tag>
+                )
+            }
         },
         {
             title: 'Status',
-            key: 'isOnline',
-            dataIndex: 'isOnline',
-            sorter: (a, b) => a.isOnline.toString().length - b.isOnline.toString().length,
+            key: '',
+            dataIndex: '',
             sortDirections: ['descend', 'ascend'],
-            render: (status: boolean) => {
-                let color = "error";
-                if (status) {
+            render: (user: UserDTO) => {
+                let status = "";
+                let color = "";
+                if (!user.isOnline) {
+                    color = "error";
+                    status = "Offline";
+                }
+                if (user.isOnline) {
+                    status = "Online";
                     color = "green";
+                }
+                if (user.roomId) {
+                    status = "In Room";
+                    color = "orange";
+                }
+
+                if (user.isPlaying) {
+                    status = "Playing";
+                    color = "gold";
                 }
                 return (
                     <Tag color={color} key={"status"}>
                         {
-                            status ? "Online" : "Offline"
+                            status
                         }
                     </Tag>
                 );
@@ -189,7 +218,11 @@ const RoomList: FC<RoomListProps> = (props) => {
                 if (result.code === 200 && result.isSuccess) {
                     roomCreationForm.resetFields();
                     const roomInfo: RoomDTO = result.responseData;
-                    setUser({ ...user, roomId: roomInfo.id, isRoomOwner: true, sitting: true, isOnline: true });
+                    const newUser: UserDTO = user;
+                    newUser.roomId = roomInfo.id;
+                    newUser.isRoomOwner = true;
+                    newUser.sitting = true;
+                    setUser(newUser);
                     setRoomInfo(roomInfo);
                     setStep(3);
                     setOpenCreateRoom(false);
@@ -220,7 +253,7 @@ const RoomList: FC<RoomListProps> = (props) => {
         if (res.isSuccess) {
             const room = await getRoom(currentRoom.id);
             const newUser: UserDTO = user;
-            if(room.isSuccess && room.responseData) {
+            if (room.isSuccess && room.responseData) {
                 setRoomInfo(room.responseData);
                 newUser.roomId = room.responseData.id;
                 setUser(newUser);
@@ -263,6 +296,13 @@ const RoomList: FC<RoomListProps> = (props) => {
 
     const handleWhenRoomPaginationChange = async (page: number, pageSize: number): Promise<void> => {
         await getListRooms(roomSearchKeywords, page, pageSize);
+    }
+
+    const logOut = (): void => {
+        setUser(undefined);
+        removeAuthToken();
+        setStep(1);
+        connection?.stop();
     }
 
     return (

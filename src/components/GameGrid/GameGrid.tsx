@@ -98,11 +98,11 @@ const GameGrid: FC<GameGridProps> = (props) => {
         connection.on("UpdateTurn", (data: Coordinates) => {
             switchTurn(data);
         });
-        connection.on("Loser", async (matchId: string): Promise<void> => {
+        connection.on("MatchResponseForLoser", async (matchId: string): Promise<void> => {
             getCoordinates(matchId);
             setIsWinner(false);
         });
-        connection.on("Winner", async (): Promise<void> => {
+        connection.on("MatchResponseForWinner", async (): Promise<void> => {
             setIsWinner(true);
         });
     }, []);
