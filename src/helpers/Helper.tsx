@@ -21,6 +21,19 @@ const EnvEnpoint = (): string => {
     }
 }
 
+const generateShortUserName = (userName: string): string => {
+    const seperatedWords = userName.split(" ");
+    let returnName = "";
+    if(seperatedWords.length > 1) {
+        const firstLetter = seperatedWords[0][0];
+        const lastLetter = seperatedWords[seperatedWords.length - 1][0];
+        returnName = firstLetter.toLowerCase() + lastLetter.toUpperCase();
+    } else {
+        returnName = seperatedWords[0][0].toUpperCase();
+    }
+    return returnName;
+}
+
 const checkWinner = (gameboard: Array<Array<Coordinates>>, x: number, y: number, checkingPlayer: string): ReturnResult => {
     const result: ReturnResult = {
         winner: "",
@@ -182,4 +195,4 @@ const isExpired = (): boolean => {
     return false;
 }
 
-export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint }
+export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName }

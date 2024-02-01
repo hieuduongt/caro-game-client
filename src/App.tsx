@@ -7,7 +7,7 @@ import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, RoomDTO, UserDTO } from './models/Models';
 import { getCurrentMatchByUserId, getListCoordinates } from './services/GameServices';
@@ -141,6 +141,8 @@ const App: FC = () => {
     removeAuthToken();
     setStep(1);
     connection?.stop();
+    setConnected(false);
+    setConnection(undefined);
   }
 
   useEffect((): any => {
@@ -161,7 +163,7 @@ const App: FC = () => {
         setLoading(false);
       });
     }
-  }, [isConnected])
+  }, [isConnected]);
 
   return (
     <div className='container'>
@@ -175,8 +177,8 @@ const App: FC = () => {
             </div>
 
           } arrow={true} trigger="click">
-            <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} size="large" gap={2}>
-              {user.userName}
+            <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
+              {generateShortUserName(user.userName)}
             </Avatar>
 
           </Popover>
