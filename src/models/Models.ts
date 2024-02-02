@@ -68,6 +68,9 @@ export interface UserDTO {
     isOnline: boolean;
     isPlaying: boolean;
     connectionId: string;
+    numberOfMatchs: number;
+    loseMatchs: number;
+    winMatchs: number;
 }
 
 export interface Message {

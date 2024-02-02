@@ -38,6 +38,18 @@
   gap: 10px;
 }
 
+.player-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  box-shadow: rgba(17, 17, 26, 0.1) 0px 0px 16px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
 .name {
   font-weight: 500;
 }

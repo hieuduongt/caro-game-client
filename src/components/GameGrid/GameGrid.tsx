@@ -33,7 +33,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
         const arr = [];
         for (let i = 0; i < 20; i++) {
             arr[i] = new Array<Coordinates>();
-            for (let j = 0; j < 40; j++) {
+            for (let j = 0; j < 20; j++) {
                 arr[i][j] = {
                     userId: "",
                     player: "",
@@ -83,6 +83,13 @@ const GameGrid: FC<GameGridProps> = (props) => {
 
     const switchTurn = (data: Coordinates): void => {
         updateGameBoard(data.x, data.y, data.userId, data.player, data.id, true);
+        document.querySelector(`[custom-coordinates="${data.x}, ${data.x}"]`)?.scrollIntoView(
+            {
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+            }
+        );
         setYourTurn(true);
     }
 
@@ -114,14 +121,14 @@ const GameGrid: FC<GameGridProps> = (props) => {
     useEffect(() => {
         initGameBoard([]);
     }, [newGame]);
-    
+
     useEffect(() => {
         setPlayer(initialPlayer);
     }, [initialPlayer]);
 
     const handleClick = async (e: any, x: number, y: number): Promise<void> => {
         // check if the cell is already clicked -> stop the logic
-        if(!yourTurn) return;
+        if (!yourTurn) return;
         if (player !== initialPlayer) return;
         if (!e || !e.target || e.target.nodeName.toLowerCase() !== "td") return;
         if (e.target.getAttribute("custom-selected") === "true") return;
@@ -180,12 +187,12 @@ const GameGrid: FC<GameGridProps> = (props) => {
                                     {
                                         itemY.map((itemX: Coordinates, x: number) => (
                                             <td
-                                            key={`${y}, ${x}`}
-                                            className={`${itemX.winPoint ? "win" : ""} ${itemX.current && user.id !== itemX.userId ? "current" : ""}`}
-                                            onClick={(e) => handleClick(e, y, x)}
-                                            custom-coordinates={`${y}, ${x}`}
-                                            custom-selected={itemX.userId? "true" : "false"}
-                                            style={{cursor: yourTurn ? "pointer" : "not-allowed"}}
+                                                key={`${y}, ${x}`}
+                                                className={`${itemX.winPoint ? "win" : ""} ${itemX.current && user.id !== itemX.userId ? "current" : ""}`}
+                                                onClick={(e) => handleClick(e, y, x)}
+                                                custom-coordinates={`${y}, ${x}`}
+                                                custom-selected={itemX.userId ? "true" : "false"}
+                                                style={{ cursor: yourTurn ? "pointer" : "not-allowed" }}
                                             >
                                                 {
                                                     playerIcons.find(it => it.playerName === itemX.player)?.icon

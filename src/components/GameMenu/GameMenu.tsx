@@ -1,8 +1,10 @@
 import { FC, useContext, useEffect, useRef, useState } from 'react';
 import './GameMenu.css';
-import { Button, Form, Input, Flex, notification } from 'antd';
+import { Button, Form, Input, Flex, notification, Avatar } from 'antd';
 import { CloseOutlined } from "@ant-design/icons";
 import { AiOutlineSend } from "react-icons/ai";
+import { FaRegCircle } from "react-icons/fa";
+import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
 import { ActionRoomDTO, MatchDTO, Message, UserDTO } from '../../models/Models';
 import { getRoomByUser, leaveRoom, updateSitting } from '../../services/RoomServices';
@@ -48,7 +50,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             const newMess: Message[] = prev && prev?.length ? [...prev] : [];
             const mess: Message = {
                 userId: user.id,
-                userName: userName||"",
+                userName: userName || "",
                 isMyMessage: false,
                 message: message
             }
@@ -229,6 +231,12 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             setYourTurn(true);
             setRoomOwnerTime(300);
             setCompetitorTime(300);
+            api.info({
+                message: 'Your turn',
+                description: "You will go first!",
+                duration: 5,
+                placement: "top"
+            });
         } else {
             api.error({
                 message: 'Error',
@@ -266,14 +274,15 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                     </div>
                     <div className='player-info current-user'>
                         <div className='info'>
-                            <div className='avatar'>
-                                <img src="human.jpg" alt="" />
+                            <div className='player-icon'>
+                                <FaRegCircle size={20} color='red' />
                             </div>
+
                             <div className='player-name'>{roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.userName}</div>
                         </div>
                         <div className='competition-history-info'>
-                            <div className='number-of-wins'>Wins: { }</div>
-                            <div className='number-of-losses'>Losses: { }</div>
+                            <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs || ""}</div>
                         </div>
                     </div>
                 </div>
@@ -290,14 +299,14 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                     </div>
                     <div className={`slot ${user.isRoomOwner ? "full" : ""} ${sitted ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
                         <div className='info'>
-                            <div className='avatar'>
-                                <img src="human.jpg" alt="" />
+                            <div className='player-icon'>
+                                <MdClose size={28} color='blue' />
                             </div>
                             <div className='player-name'>{roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.userName}</div>
                         </div>
                         <div className='competition-history-info'>
-                            <div className='number-of-wins'>Wins: { }</div>
-                            <div className='number-of-losses'>Losses: { }</div>
+                            <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs || ""}</div>
                         </div>
                     </div>
                 </div>

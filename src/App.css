@@ -41,3 +41,18 @@
   --shadow-color: hsl(220deg 100% 55%);
   filter: drop-shadow(1px 2px 8px var(--shadow-color));
 }
+
+.profile {
+  display: flex;
+  gap: 10px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.match-info {
+  padding: 5px;
+  font-size: 14px;
+  border-radius: 10px;
+  box-shadow: rgba(17, 17, 26, 0.1) 0px 0px 16px;
+}

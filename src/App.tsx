@@ -89,7 +89,10 @@ const App: FC = () => {
         lastActiveDate: res.responseData.lastActiveDate,
         isPlaying: res.responseData.isPlaying,
         isOnline: res.responseData.isOnline,
-        connectionId: res.responseData.connectionId
+        connectionId: res.responseData.connectionId,
+        loseMatchs: res.responseData.loseMatchs,
+        numberOfMatchs: res.responseData.numberOfMatchs,
+        winMatchs: res.responseData.winMatchs
       }
       setUser(currentUser);
       if (res.responseData.isPlaying) {
@@ -169,19 +172,24 @@ const App: FC = () => {
     <div className='container'>
       {contextHolder}
       {user && step === 2 ?
-        <Affix offsetTop={20} style={{ marginBottom: 10}}>
-          <Popover placement="bottom" title={""} content={
-            <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
-              <Button type="link">Your profile</Button>
-              <Button type="dashed" onClick={logOut}>Log out</Button>
+        <Affix offsetTop={20} style={{ marginBottom: 10, display: "flex" }}>
+          <div className='profile'>
+            <Popover placement="bottom" title={""} content={
+              <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
+                <div>Hello {user.userName}</div>
+                <Button type="link">Your profile</Button>
+                <Button type="dashed" onClick={logOut}>Log out</Button>
+              </div>
+            } arrow={true} trigger="click">
+              <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
+                {generateShortUserName(user.userName)}
+              </Avatar>
+            </Popover>
+            <div className='match-info'>
+              <div><b>Matchs:</b> <span style={{color: "#4096ff", fontWeight: "bold"}}>{user.numberOfMatchs}</span></div>
+              <div><b>Win/Lose:</b> <span style={{color: "#52c41a", fontWeight: "bold"}}>{user.winMatchs}</span>/<span style={{color: "#FA541C", fontWeight: "bold"}}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
             </div>
-
-          } arrow={true} trigger="click">
-            <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
-              {generateShortUserName(user.userName)}
-            </Avatar>
-
-          </Popover>
+          </div>
         </Affix> :
         <></>
       }
