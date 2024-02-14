@@ -17,7 +17,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo } = useContext(AppContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode } = useContext(AppContext);
     const [messages, setMessages] = useState<Message[]>();
     const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
@@ -135,10 +135,12 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
         connection.on("MatchStartResponseForInRoomMembers", async (): Promise<void> => {
             await getRoomInfo();
+            setWatchMode(true);
         });
 
         connection.on("MatchFinishResponseForInRoomMembers", async (): Promise<void> => {
             await getRoomInfo();
+            setWatchMode(false);
         });
 
         cLoaded.current = true;
@@ -196,7 +198,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     const handleWhenSitting = async (): Promise<void> => {
         if (user.isRoomOwner || sitted) return;
-        const res = await updateSitting(user.id, true, false);
+        if (roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id) return;
+        const res = await updateSitting(roomInfo.id, user.id, true, false);
         if (res.isSuccess) {
             await getRoomInfo();
             await getUserInfo();
@@ -212,7 +215,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         } else {
             userId = user.id;
         }
-        const res = await updateSitting(userId, false, user.isRoomOwner ? true : false);
+        const res = await updateSitting(roomInfo.id, userId, false, user.isRoomOwner ? true : false);
         if (res.isSuccess) {
             if (!user.isRoomOwner) {
                 await getRoomInfo();
@@ -267,7 +270,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 <div className='player'>
                     <div className='player-title'>
                         <div className='time'>
-                            {start ?
+                            {start || watchMode ?
                                 <Time time={roomOwnerTime} /> : <></>
                             }
                         </div>
@@ -288,16 +291,16 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 </div>
                 <div className="player">
                     <div className='player-title'>
-                        <Button type="primary" danger shape="round" disabled={user.isRoomOwner && sitted ? false : (!sitted || start)} size='small' icon={<CloseOutlined />} onClick={handleWhenLeaveSitting}>
+                        <Button type="primary" danger shape="round" disabled={user.isRoomOwner ? false : user.id === roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id ? false : true} size='small' icon={<CloseOutlined />} onClick={handleWhenLeaveSitting}>
                             {user.isRoomOwner ? "Kick" : "Leave"}
                         </Button>
                         <div className='time'>
-                            {start ?
+                            {start || watchMode ?
                                 <Time time={competitorTime} /> : <></>
                             }
                         </div>
                     </div>
-                    <div className={`slot ${user.isRoomOwner ? "full" : ""} ${sitted ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
+                    <div className={`slot ${user.isRoomOwner || roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting) ? "full" : ""} ${sitted ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
                         <div className='info'>
                             <div className='player-icon'>
                                 <MdClose size={28} color='blue' />

@@ -19,6 +19,7 @@ const App: FC = () => {
   const [yourTurn, setYourTurn] = useState<boolean>(false);
   const [newGame, setNewGame] = useState<number>(0);
   const [start, setStart] = useState<boolean>(false);
+  const [watchMode, setWatchMode] = useState<boolean>(false);
   const cLoaded = useRef<boolean>(false);
   const [connection, setConnection] = useState<signalR.HubConnection>();
   const [step, setStep] = useState<number>(0);
@@ -99,6 +100,7 @@ const App: FC = () => {
         const match = await getCurrentMatchByUserId(res.responseData.id);
         if (match.isSuccess) {
           setMatchInfo(match.responseData);
+          setWatchMode(true);
           const listCoordinates = await getListCoordinates(match.responseData.matchId);
           if (listCoordinates.isSuccess) {
 
@@ -216,7 +218,9 @@ const App: FC = () => {
             start,
             setStart,
             newGame,
-            setNewGame
+            setNewGame,
+            watchMode,
+            setWatchMode
           }}>
             {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
             {step === 2 ? <RoomList /> : <></>}

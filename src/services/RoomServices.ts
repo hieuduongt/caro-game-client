@@ -27,8 +27,8 @@ export const leaveRoom = async (data: ActionRoomDTO) : Promise<ResponseData<unde
     return post<undefined>(url, data);
 }
 
-export const updateSitting = async (userId: string, isSitting: boolean, isKicked?: boolean) : Promise<ResponseData<undefined>> => {
-    const url = `${EnvEnpoint()}/api/Game/sitting?userId=${userId}&isSitting=${isSitting}&isKicked=${isKicked}`;
+export const updateSitting = async (roomId: string, userId: string, isSitting: boolean, isKicked?: boolean) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Game/sitting?roomId=${roomId}&userId=${userId}&isSitting=${isSitting}&isKicked=${isKicked}`;
     return post<undefined>(url);
 }
 

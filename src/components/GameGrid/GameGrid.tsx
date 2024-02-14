@@ -23,7 +23,7 @@ const playerIcons = [
 ]
 
 const GameGrid: FC<GameGridProps> = (props) => {
-    const { connection, matchInfo, user, listCoordinates, setListCoordinates, yourTurn, setYourTurn, start, newGame } = useContext(AppContext);
+    const { connection, matchInfo, user, listCoordinates, setListCoordinates, yourTurn, setYourTurn, start, newGame, watchMode } = useContext(AppContext);
     const { initialPlayer } = props;
     const [player, setPlayer] = useState<Player>();
     const [isWinner, setIsWinner] = useState<boolean>();
@@ -177,6 +177,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
         <div className='game-grid'>
             <div className='game-table-overlay' style={{ opacity: start ? 0 : 1, visibility: start ? "hidden" : "visible", color: isWinner ? "#00fd00" : "#ff0000" }}>
                 {isWinner === undefined ? "" : isWinner === true ? "You Win!" : "You Lose!"}
+                <div style={{color: "#80808082", display: watchMode ? "block" : "none"}}>Watching Mode</div>
             </div>
             <div className="game-table">
                 <table>
