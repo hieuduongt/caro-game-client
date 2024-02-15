@@ -10,7 +10,7 @@ import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, RoomDTO, UserDTO } from './models/Models';
-import { getCurrentMatchByUserId, getListCoordinates } from './services/GameServices';
+
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -96,46 +96,6 @@ const App: FC = () => {
         winMatchs: res.responseData.winMatchs
       }
       setUser(currentUser);
-      if (res.responseData.isPlaying) {
-        const match = await getCurrentMatchByUserId(res.responseData.id);
-        if (match.isSuccess) {
-          setMatchInfo(match.responseData);
-          setWatchMode(true);
-          const listCoordinates = await getListCoordinates(match.responseData.matchId);
-          if (listCoordinates.isSuccess) {
-
-            setListCoordinates(listCoordinates.responseData);
-            const currentCoordinate = listCoordinates.responseData.find(lc => lc.current === true);
-            if (currentCoordinate) {
-              if (currentCoordinate.userId === currentUser?.id) {
-                setYourTurn(false);
-              } else {
-                setYourTurn(true);
-              }
-            } else {
-              if (currentUser?.isRoomOwner === true) {
-                setYourTurn(true);
-              } else {
-                setYourTurn(false);
-              }
-            }
-          } else {
-            api.error({
-              message: 'Connect Failed',
-              description: "Cannot connect to server with error: " + listCoordinates.errorMessage,
-              duration: -1,
-              placement: "top"
-            });
-          }
-        } else {
-          api.error({
-            message: 'Connect Failed',
-            description: "Cannot connect to server with error: " + match.errorMessage,
-            duration: -1,
-            placement: "top"
-          });
-        }
-      }
       return res.responseData.roomId ? true : false;
     }
     return false;

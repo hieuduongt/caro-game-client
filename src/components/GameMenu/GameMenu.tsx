@@ -133,12 +133,12 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             setStart(false);
         });
 
-        connection.on("MatchStartResponseForInRoomMembers", async (): Promise<void> => {
+        connection.on("MatchStartResponseForInRoomMembers", async (matchInfo: MatchDTO): Promise<void> => {
             await getRoomInfo();
             setWatchMode(true);
         });
 
-        connection.on("MatchFinishResponseForInRoomMembers", async (): Promise<void> => {
+        connection.on("MatchFinishResponseForInRoomMembers", async (matchId: string): Promise<void> => {
             await getRoomInfo();
             setWatchMode(false);
         });
