@@ -41,7 +41,6 @@ export interface RoomDTO {
     id: string;
     name: string;
     roomOwnerId?: string
-    guestId?: string;
     status?: Status;
     numberOfUsers?: number;
     members?: UserDTO[];

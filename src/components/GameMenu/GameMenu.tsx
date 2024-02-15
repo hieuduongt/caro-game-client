@@ -285,7 +285,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='competition-history-info'>
                             <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs}</div>
-                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs || ""}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs || "0"}</div>
                         </div>
                     </div>
                 </div>
@@ -300,7 +300,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                             }
                         </div>
                     </div>
-                    <div className={`slot ${user.isRoomOwner || roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting) ? "full" : ""} ${sitted ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
+                    <div className={`slot ${user.isRoomOwner || roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting) ? "full" : ""} ${sitted || roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting) ? "joined" : ""} player-info`} onClick={handleWhenSitting}>
                         <div className='info'>
                             <div className='player-icon'>
                                 <MdClose size={28} color='blue' />
@@ -309,7 +309,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='competition-history-info'>
                             <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs}</div>
-                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs || ""}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs || "0"}</div>
                         </div>
                     </div>
                 </div>

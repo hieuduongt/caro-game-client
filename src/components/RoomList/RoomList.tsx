@@ -55,14 +55,14 @@ const RoomList: FC<RoomListProps> = (props) => {
             sortDirections: ['descend', 'ascend']
         },
         {
-            title: 'Members in room',
+            title: 'Members',
             dataIndex: 'members',
             key: 'members',
             render: (members: UserDTO[]) => {
                 return (
                     <Avatar.Group maxCount={4} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
                         {members.map(m => (
-                            <Avatar style={{ backgroundColor: '#2db7f5' }}>{m.userName}</Avatar>
+                            <Avatar key={m.id} style={{ backgroundColor: '#2db7f5' }}>{m.userName}</Avatar>
                         ))}
                     </Avatar.Group>
                 )
@@ -252,6 +252,7 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await joinRoom(currentRoom);
         if (res.isSuccess) {
             const room = await getRoom(currentRoom.id);
+            console.log(room);
             const newUser: UserDTO = user;
             if (room.isSuccess && room.responseData) {
                 setRoomInfo(room.responseData);
