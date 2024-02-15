@@ -252,7 +252,6 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await joinRoom(currentRoom);
         if (res.isSuccess) {
             const room = await getRoom(currentRoom.id);
-            console.log(room);
             const newUser: UserDTO = user;
             if (room.isSuccess && room.responseData) {
                 setRoomInfo(room.responseData);

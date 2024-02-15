@@ -44,6 +44,7 @@ export interface RoomDTO {
     status?: Status;
     numberOfUsers?: number;
     members?: UserDTO[];
+    matchs?: MatchDTO[];
 }
 
 export interface ActionRoomDTO {

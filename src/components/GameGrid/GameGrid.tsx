@@ -4,7 +4,7 @@ import { AppContext } from '../../helpers/Context';
 import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
-import { Coordinates, GameDTO, Player, UserInMatches } from '../../models/Models';
+import { Coordinates, GameDTO, MatchDTO, Player, UserInMatches } from '../../models/Models';
 import { finishGame, getListCoordinates, move, updateWinPoints } from '../../services/GameServices';
 
 interface GameGridProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -40,7 +40,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
                     x: j,
                     y: i,
                     current: false,
-                    winPoint: false
+                    winPoint: false,
+                    id: ""
                 };
             }
         }
@@ -53,7 +54,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
                     x: coordinates.x,
                     y: coordinates.y,
                     current: coordinates.current,
-                    winPoint: coordinates.winPoint
+                    winPoint: coordinates.winPoint,
+                    id: coordinates.id
                 }
             }
         }
@@ -105,12 +107,30 @@ const GameGrid: FC<GameGridProps> = (props) => {
         connection.on("UpdateTurn", (data: Coordinates) => {
             switchTurn(data);
         });
+
+        connection.on("UpdateGameData", (matchId: string) => {
+            if(!user.isPlaying) {
+                getCoordinates(matchId);
+            }
+        });
+
         connection.on("MatchResponseForLoser", async (matchId: string): Promise<void> => {
             getCoordinates(matchId);
             setIsWinner(false);
         });
+
         connection.on("MatchResponseForWinner", async (): Promise<void> => {
             setIsWinner(true);
+        });
+
+        connection.on("MatchStartResponseForInRoomMembers", async (matchInfo: MatchDTO): Promise<void> => {
+            initGameBoard([]);
+        });
+
+        connection.on("MatchFinishResponseForInRoomMembers", async (matchId: string): Promise<void> => {
+            if(!user.isPlaying) {
+                getCoordinates(matchId);
+            }
         });
     }, []);
 
@@ -125,7 +145,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
     useEffect(() => {
         setPlayer(initialPlayer);
     }, [initialPlayer]);
-
+    
     const handleClick = async (e: any, x: number, y: number): Promise<void> => {
         // check if the cell is already clicked -> stop the logic
         if (!yourTurn) return;
@@ -151,7 +171,6 @@ const GameGrid: FC<GameGridProps> = (props) => {
             updateGameBoard(res.responseData.x, res.responseData.y, res.responseData.userId, res.responseData.player, res.responseData.id, res.responseData.current, res.responseData.winPoint);
             setYourTurn(false);
         }
-
         const winner = checkWinner(gameBoard, x, y, user.id);
         if (winner.winner) {
             matchInfo.userInMatches.forEach((u: UserInMatches) => {
