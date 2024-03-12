@@ -7,7 +7,7 @@ import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
 import { ActionRoomDTO, MatchDTO, Message, UserDTO } from '../../models/Models';
-import { getRoomByUser, leaveRoom, updateSitting } from '../../services/RoomServices';
+import { getRoomByUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
@@ -175,13 +175,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     };
 
     const handleWhenLeaveRoom = async (): Promise<void> => {
-        const isOwner: boolean = roomInfo.members.find((m: UserDTO) => m.id === user.id && m.isRoomOwner === true) ? true : false;
-        const room: ActionRoomDTO = {
-            id: roomInfo.id,
-            userId: user.id,
-            isRoomOwner: isOwner
-        }
-        const res = await leaveRoom(room);
+        const res = await leaveRoom(roomInfo.id);
         if (res.isSuccess === true) {
             await getUserInfo();
             setRoomInfo(undefined);
@@ -199,7 +193,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const handleWhenSitting = async (): Promise<void> => {
         if (user.isRoomOwner || sitted) return;
         if (roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id) return;
-        const res = await updateSitting(roomInfo.id, user.id, true, false);
+        const res = await sit(roomInfo.id);
         if (res.isSuccess) {
             await getRoomInfo();
             await getUserInfo();
@@ -215,7 +209,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         } else {
             userId = user.id;
         }
-        const res = await updateSitting(roomInfo.id, userId, false, user.isRoomOwner ? true : false);
+        const res = await leaveTheSit(roomInfo.id, userId);
         if (res.isSuccess) {
             if (!user.isRoomOwner) {
                 await getRoomInfo();

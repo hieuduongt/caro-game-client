@@ -245,17 +245,14 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
-        const currentRoom: ActionRoomDTO = {
-            id: room.id,
-            userId: user.id
-        }
-        const res = await joinRoom(currentRoom);
+
+        const res = await joinRoom(room.id);
         if (res.isSuccess) {
-            const room = await getRoom(currentRoom.id);
+            const currentRoomRes = await getRoom(room.id);
             const newUser: UserDTO = user;
-            if (room.isSuccess && room.responseData) {
-                setRoomInfo(room.responseData);
-                newUser.roomId = room.responseData.id;
+            if (currentRoomRes.isSuccess && currentRoomRes.responseData) {
+                setRoomInfo(currentRoomRes.responseData);
+                newUser.roomId = currentRoomRes.responseData.id;
                 setUser(newUser);
                 setStep(3);
             }
