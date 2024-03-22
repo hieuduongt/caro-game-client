@@ -6,7 +6,7 @@ import { AiOutlineSend } from "react-icons/ai";
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
-import { ActionRoomDTO, MatchDTO, Message, UserDTO } from '../../models/Models';
+import { MatchDTO, Message, UserDTO } from '../../models/Models';
 import { getRoomByUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
@@ -26,7 +26,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
-        const currentRoom = await getRoomByUser(user.id);
+        const currentRoom = await getRoomByUser();
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
             const sittedMember = currentRoom.responseData.members?.find(m => m.sitting && !m.isRoomOwner);
@@ -52,7 +52,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 userId: user.id,
                 userName: userName || "",
                 isMyMessage: false,
-                message: message
+                message: message,
+                isNewMessage: true
             }
             newMess.push(mess);
             return newMess;

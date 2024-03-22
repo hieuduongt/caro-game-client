@@ -1,5 +1,5 @@
 import { EnvEnpoint } from "../helpers/Helper";
-import { ActionRoomDTO, Pagination, ResponseData, RoomDTO } from "../models/Models";
+import { Pagination, ResponseData, RoomDTO } from "../models/Models";
 import { get, post } from "./ApiCreator";
 
 export const getAllRooms = async (search?: string, page?: number, pageSize?: number) : Promise<ResponseData<Pagination<RoomDTO>>> => {
@@ -12,8 +12,8 @@ export const getRoom = async (id: string) : Promise<ResponseData<RoomDTO>> => {
     return get<RoomDTO>(url);
 }
 
-export const getRoomByUser = async (id: string) : Promise<ResponseData<RoomDTO>> => {
-    const url = `${EnvEnpoint()}/api/Room/room-by-user/${id}`;
+export const getRoomByUser = async () : Promise<ResponseData<RoomDTO>> => {
+    const url = `${EnvEnpoint()}/api/Room/room-by-user`;
     return get<RoomDTO>(url);
 }
 

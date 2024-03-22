@@ -47,12 +47,6 @@ export interface RoomDTO {
     matchs?: MatchDTO[];
 }
 
-export interface ActionRoomDTO {
-    id: string;
-    userId: string;
-    isRoomOwner?: boolean;
-}
-
 export interface UserDTO {
     id: string;
     roomId: string;
@@ -74,10 +68,35 @@ export interface UserDTO {
 }
 
 export interface Message {
+    id?: string;
     userId: string;
     userName: string;
     message: string;
     isMyMessage: boolean;
+    isNewMessage: boolean;
+    updatedDate?: Date;
+    createdDate?: Date;
+}
+
+export interface MessageQueue {
+    ref?: React.MutableRefObject<any>
+    open: boolean;
+    fromUser: string;
+    fromUserId: string;
+    messages: Message[];
+}
+
+export interface MessageDto {
+    id?: string;
+    content: string;
+    fromUserId?: string;
+    toUserId?: string;
+    fromUser?: UserDTO;
+    toUser?: UserDTO;
+    room?: RoomDTO;
+    toRoomId?: string;
+    updatedDate?: Date;
+    createdDate?: Date;
 }
 
 export interface MatchDTO {

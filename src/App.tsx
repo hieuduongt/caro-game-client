@@ -1,16 +1,17 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
+import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input } from 'antd';
+import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, RoomDTO, UserDTO } from './models/Models';
-
+import { Coordinates, MatchDTO, Message, MessageDto, MessageQueue, RoomDTO, UserDTO } from './models/Models';
+import { getMessage, sendMessageToUser } from './services/ChatServices';
+const { Search } = Input;
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -28,6 +29,9 @@ const App: FC = () => {
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
+  const [messageQueue, setMessageQueue] = useState<MessageQueue[]>([]);
+  const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
+  const messageRefs = useRef<Array<HTMLDivElement>>([]);
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -130,6 +134,188 @@ const App: FC = () => {
     }
   }, [isConnected]);
 
+  useEffect(() => {
+    if (connection) {
+      connection.on("NewPersonalMessage", (data: MessageDto) => {
+        setNewReceivedMessage(data);
+      });
+    }
+  }, [connection]);
+
+  useEffect(() => {
+    if (newReceivedMessage) {
+      handleWhenReceivingMessages(newReceivedMessage);
+    }
+  }, [newReceivedMessage]);
+
+  useEffect(() => {
+    if (messageRefs.current![messageQueue.length - 1]) {
+      messageRefs.current![messageQueue.length - 1].scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [messageQueue]);
+
+  const pushMessageRef = (el: HTMLDivElement, idx: number) => messageRefs.current[idx] = el;
+
+  const handleWhenReceivingMessages = async (data: MessageDto) => {
+    let newArr = [...messageQueue];
+    let idx: number = -1;
+    const newMessage: Message = {
+      isMyMessage: false,
+      message: data.content,
+      userId: data.fromUserId || data.fromUser?.id || "",
+      userName: data.fromUser!.userName || "",
+      isNewMessage: true,
+      createdDate: data.createdDate,
+      updatedDate: data.updatedDate
+    }
+    const currentMessageQueue = newArr.some((mq: MessageQueue) => mq.fromUserId === data.fromUserId || mq.fromUserId === data.fromUser?.id);
+    if (!currentMessageQueue) {
+      const res = await getMessage(data.fromUserId || data.fromUser?.id || "");
+      if (res.isSuccess) {
+        const allMessages: Message[] = res.responseData.map((m, index) => {
+          const message: Message = {
+            isMyMessage: m.fromUserId === user?.id,
+            message: m.content,
+            userId: m.toUserId || "",
+            userName: m.fromUser?.userName || "",
+            isNewMessage: false,
+            createdDate: data.createdDate,
+            updatedDate: data.updatedDate
+          }
+          return message;
+        });
+        const newMessageQueue: MessageQueue = {
+          fromUser: data.fromUser!.userName,
+          fromUserId: data.fromUserId || data.fromUser?.id || "",
+          messages: allMessages,
+          open: true
+        };
+        newArr.push(newMessageQueue);
+      }
+    } else {
+      for (let index = 0; index < newArr.length; index++) {
+        const currentMessageQueue = newArr[index];
+        if (currentMessageQueue.fromUserId === data.fromUserId) {
+          currentMessageQueue.messages.push(newMessage);
+          idx = index;
+          break;
+        }
+      }
+      messageRefs.current![idx].scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    setMessageQueue(newArr);
+    if (idx >= 0) {
+      messageRefs.current![idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      messageRefs.current![0]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+  }
+
+  const handleWhenClickOnChatButton = async (data: UserDTO) => {
+    let newArr = [...messageQueue];
+    const currentMessageQueue = newArr.some((mq: MessageQueue) => mq.fromUserId === data.id);
+    if (!currentMessageQueue) {
+      const res = await getMessage(data.id);
+      if (res.isSuccess) {
+        if (res.responseData) {
+          const messages: Message[] = res.responseData.map((m, index) => {
+            const message: Message = {
+              isMyMessage: m.fromUserId === user?.id,
+              message: m.content,
+              userId: m.toUserId || "",
+              userName: m.fromUser?.userName || "",
+              isNewMessage: index === res.responseData.length - 1 ? true : false,
+              createdDate: m.createdDate,
+              updatedDate: m.updatedDate
+            }
+            return message;
+          });
+          const newMessageQueue: MessageQueue = {
+            fromUser: data.userName,
+            fromUserId: data.id,
+            messages: messages,
+            open: true
+          };
+          newArr.push(newMessageQueue);
+        }
+      }
+    } else {
+      for (let index = 0; index < newArr.length; index++) {
+        const currentMessageQueue = newArr[index];
+        if (currentMessageQueue.fromUserId === data.id) {
+          currentMessageQueue.open = true;
+          break;
+        }
+      }
+    }
+    setMessageQueue(newArr);
+  }
+
+  const handleSendMessage = async (data: MessageQueue, value: string, idx: number) => {
+    if (!value) return;
+    const newMessageDto: MessageDto = {
+      toUserId: data.fromUserId,
+      content: value,
+    }
+
+    const res = await sendMessageToUser(newMessageDto);
+    if (res.isSuccess) {
+
+      let newArr = [...messageQueue];
+      const newMessage: Message = {
+        isMyMessage: true,
+        message: value,
+        userId: data.fromUserId,
+        userName: data.fromUser,
+        isNewMessage: true,
+        createdDate: new Date(),
+        updatedDate: new Date()
+      };
+      for (let index = 0; index < newArr.length; index++) {
+        const currentMessageQueue = newArr[index];
+        if (currentMessageQueue.fromUserId === data.fromUserId) {
+          currentMessageQueue.messages.push(newMessage);
+          break;
+        }
+      }
+      setMessageQueue(newArr);
+    } else {
+      api.error({
+        message: 'Send Failed',
+        description: "Cannot send your message with error:" + res.errorMessage,
+        duration: -1,
+        placement: "top"
+      })
+    }
+    messageRefs.current![idx].scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const renderOutgoingIncomingMessage = (isMyMessage: boolean) => {
+    return isMyMessage ? "outgoing-message" : "incomming-message";
+  }
+
+  const renderFocusMessage = (isNewMessage: boolean) => {
+    return isNewMessage ? "new-message" : "";
+  }
+
+  const handleHideMesssge = (idx: number) => {
+    setMessageQueue(prev => {
+      const arr = [...prev];
+      arr[idx].open = !arr[idx].open;
+      return arr;
+    });
+  }
+
+  const handleCloseMesssge = (idx: number) => {
+    setMessageQueue(prev => {
+      const arr = [...prev];
+      arr.splice(idx, 1);
+      return arr;
+    });
+  }
+
   return (
     <div className='container'>
       {contextHolder}
@@ -148,8 +334,8 @@ const App: FC = () => {
               </Avatar>
             </Popover>
             <div className='match-info'>
-              <div><b>Matchs:</b> <span style={{color: "#4096ff", fontWeight: "bold"}}>{user.numberOfMatchs}</span></div>
-              <div><b>Win/Lose:</b> <span style={{color: "#52c41a", fontWeight: "bold"}}>{user.winMatchs}</span>/<span style={{color: "#FA541C", fontWeight: "bold"}}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
+              <div><b>Matchs:</b> <span style={{ color: "#4096ff", fontWeight: "bold" }}>{user.numberOfMatchs}</span></div>
+              <div><b>Win/Lose:</b> <span style={{ color: "#52c41a", fontWeight: "bold" }}>{user.winMatchs}</span>/<span style={{ color: "#FA541C", fontWeight: "bold" }}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
             </div>
           </div>
         </Affix> :
@@ -183,9 +369,78 @@ const App: FC = () => {
             setWatchMode
           }}>
             {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
-            {step === 2 ? <RoomList /> : <></>}
+            {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
             {step === 3 ? <InGame /> : <></>}
           </AppContext.Provider>
+      }
+
+      {
+        messageQueue.length ?
+          <div className="message-queue">
+            {
+              messageQueue.map((mq, idx) => (
+                <div className="message-card">
+                  <div className="title">
+                    <div className='from-user'>
+                      <Button
+                        type="primary"
+                        shape="circle"
+                        size='small'
+                        icon={mq.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
+                        onClick={() => handleHideMesssge(idx)}
+                      />
+                      From: {mq.fromUser}
+                    </div>
+                    <div className="close-message-action">
+                      <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
+                        onClick={() => handleCloseMesssge(idx)}
+                      />
+                    </div>
+                  </div>
+                  <div className={mq.open ? "card-body" : "card-body close"}>
+                    <div className="content">
+                      <div className="messages">
+                        {
+                          mq.messages.map(ms => (
+                            <Collapse
+                              className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
+                              items={[{
+                                key: ms.id,
+                                label: <span>{ms.message}</span>,
+                                children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
+                              }]}
+                              expandIcon={() =>
+                                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
+                                  {user?.userName}
+                                </Avatar>
+                              }
+                              size="small"
+                              expandIconPosition={ms.isMyMessage ? "start" : "end"}
+                            />
+                          ))
+                        }
+                      </div>
+                      <div ref={el => pushMessageRef(el!, idx)} />
+                    </div>
+                    <div className="send-action">
+                      <Search
+                        placeholder="Type your messages here"
+                        enterButton={<SendOutlined />}
+                        size="middle"
+
+                        onSearch={(value: string) => handleSendMessage(mq, value, idx)}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              ))
+            }
+
+          </div>
+          :
+          <></>
       }
 
     </div >
