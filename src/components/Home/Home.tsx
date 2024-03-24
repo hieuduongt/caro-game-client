@@ -136,7 +136,7 @@ const Home: FC<HomeProps> = (props) => {
                     labelCol={{ span: 8 }}
                     wrapperCol={{ span: 16 }}
                     onKeyDown={(e) => {
-                        if(e.code && e.code.includes('Enter')) {
+                        if (e.code && e.code.includes('Enter')) {
                             handleLogin();
                         }
                     }}
@@ -191,23 +191,63 @@ const Home: FC<HomeProps> = (props) => {
                     <Form.Item
                         name="email"
                         label="Email"
-                        rules={[{ required: true, message: 'Please input your email' }]}
+                        rules={
+                            [
+                                { 
+                                    required: true, 
+                                    message: 'Please input your E-mail!' 
+                                },
+                                {
+                                    type: "email",
+                                    message: "The input is not valid E-mail!"
+                                }
+                            ]
+                        }
                     >
                         <Input type="text" />
                     </Form.Item>
                     <Form.Item
                         name="password"
                         label="Password"
-                        rules={[{ required: true, message: 'Please input your password' }]}
+                        rules={
+                            [
+                                {
+                                    required: true,
+                                    message: 'Please input your password'
+                                },
+                                {
+                                    pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W])(?!.*\s).{8,}$/,
+                                    message: 'Your password must contain eight characters including numbers, lower and uppercase letters, and at least one special character!'
+                                }
+                            ]
+                        }
+                        hasFeedback
                     >
                         <Input.Password type="password" />
                     </Form.Item>
                     <Form.Item
+                        dependencies={['password']}
                         name="rePassword"
-                        label="Retype Your Password"
-                        rules={[{ required: true, message: 'Please input your password again' }]}
+                        label="Confirm Your Password"
+                        hasFeedback
+                        rules={
+                            [
+                                {
+                                    required: true,
+                                    message: 'Please confirm your password!'
+                                },
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                      if (!value || getFieldValue('password') === value) {
+                                        return Promise.resolve();
+                                      }
+                                      return Promise.reject(new Error('The new password that you entered do not match!'));
+                                    },
+                                  }),
+                            ]
+                        }
                     >
-                        <Input.Password type="password" />
+                        <Input.Password type="password"/>
                     </Form.Item>
                 </Form>
             </Modal>

@@ -54,7 +54,7 @@ export interface UserDTO {
     sitting: boolean;
     userName: string;
     email: string;
-    role: string[];
+    role: RoleDTO[];
     status: AccountStatus;
     createdDate: Date;
     lastActiveDate: Date;
@@ -65,6 +65,10 @@ export interface UserDTO {
     numberOfMatchs: number;
     loseMatchs: number;
     winMatchs: number;
+}
+
+export interface RoleDTO {
+    name: string;
 }
 
 export interface Message {

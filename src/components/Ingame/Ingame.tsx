@@ -3,7 +3,7 @@ import GameGrid from "../GameGrid/GameGrid";
 import GameMenu from "../GameMenu/GameMenu";
 import './Ingame.css'
 import { AppContext } from "../../helpers/Context";
-import { Coordinates, MatchDTO, Player } from "../../models/Models";
+import { Coordinates, Player } from "../../models/Models";
 import { getCurrentMatchByUserId, getListCoordinates } from '../../services/GameServices';
 import { notification } from 'antd';
 interface InGameProps extends React.HTMLAttributes<HTMLDivElement> {

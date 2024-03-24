@@ -12,8 +12,8 @@ export const getRoom = async (id: string) : Promise<ResponseData<RoomDTO>> => {
     return get<RoomDTO>(url);
 }
 
-export const getRoomByUser = async () : Promise<ResponseData<RoomDTO>> => {
-    const url = `${EnvEnpoint()}/api/Room/room-by-user`;
+export const getRoomOfCurrentUser = async () : Promise<ResponseData<RoomDTO>> => {
+    const url = `${EnvEnpoint()}/api/Room/room-of-current-user`;
     return get<RoomDTO>(url);
 }
 

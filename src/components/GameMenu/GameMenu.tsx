@@ -7,7 +7,7 @@ import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
 import { MatchDTO, Message, UserDTO } from '../../models/Models';
-import { getRoomByUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
+import { getRoomOfCurrentUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
@@ -26,7 +26,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
-        const currentRoom = await getRoomByUser();
+        const currentRoom = await getRoomOfCurrentUser();
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
             const sittedMember = currentRoom.responseData.members?.find(m => m.sitting && !m.isRoomOwner);
@@ -287,7 +287,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 <div className="player">
                     <div className='player-title'>
                         <Button type="primary" danger shape="round" disabled={user.isRoomOwner ? false : user.id === roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id ? false : true} size='small' icon={<CloseOutlined />} onClick={handleWhenLeaveSitting}>
-                            {user.isRoomOwner ? "Kick" : "Leave"}
+                            {user.isRoomOwner ? "Kick" : "Leave The Sit"}
                         </Button>
                         <div className='time'>
                             {start || watchMode ?

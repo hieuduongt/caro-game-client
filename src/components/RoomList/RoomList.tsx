@@ -2,7 +2,7 @@ import React, { FC, forwardRef, useContext, useEffect, useRef, useState } from "
 import './RoomList.css';
 import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar } from 'antd';
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import { RoomDTO, UserDTO, Pagination, Status, Roles, MessageQueue, MessageDto } from "../../models/Models";
+import { RoomDTO, UserDTO, Pagination, Status, Roles, MessageQueue, MessageDto, RoleDTO } from "../../models/Models";
 import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
@@ -115,10 +115,14 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Role',
             dataIndex: 'role',
             key: 'role',
-            render: (roles: string[]) => {
-                const data = Roles.find(r => r.value === roles[0]);
+            render: (roles: RoleDTO[]) => {
+                const data = roles.map(rs => {
+                    return Roles.find(r => r.value === rs.name);
+                })
                 return (
-                    <Tag color={data?.color}>{data?.value}</Tag>
+                    data.map(d => (
+                        <Tag color={d?.color}>{d?.value}</Tag>
+                    )) 
                 )
             }
         },
@@ -330,7 +334,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                     <Table
                         pagination={{ position: ["bottomCenter"], pageSize: listUsers?.pageSize, current: listUsers?.currentPage, total: listUsers?.totalRecords, onChange: handleWhenUserPaginationChange }}
                         columns={userColumns}
-                        dataSource={listUsers?.items?.filter(u => u.id !== user.id)}
+                        dataSource={listUsers?.items?.filter(u => u.id !== user.id) || []}
                         title={() =>
                             <>
                                 <Search className="input-search-user" addonBefore={<UserOutlined />} placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
