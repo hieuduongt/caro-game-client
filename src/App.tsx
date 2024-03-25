@@ -317,135 +317,139 @@ const App: FC = () => {
   }
 
   return (
-    <div className='container'>
-      {contextHolder}
-      {user && step === 2 ?
-        <Affix offsetTop={20} style={{ marginBottom: 10, display: "flex" }}>
-          <div className='profile'>
-            <Popover placement="bottom" title={""} content={
-              <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
-                <div>Hello {user.userName}</div>
-                <Button type="link">Your profile</Button>
-                <Button type="dashed" onClick={logOut}>Log out</Button>
-              </div>
-            } arrow={true} trigger="click">
-              <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
-                {generateShortUserName(user.userName)}
-              </Avatar>
-            </Popover>
-            <div className='match-info'>
-              <div><b>Matchs:</b> <span style={{ color: "#4096ff", fontWeight: "bold" }}>{user.numberOfMatchs}</span></div>
-              <div><b>Win/Lose:</b> <span style={{ color: "#52c41a", fontWeight: "bold" }}>{user.winMatchs}</span>/<span style={{ color: "#FA541C", fontWeight: "bold" }}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
-            </div>
-          </div>
-        </Affix> :
-        <></>
-      }
-
-      {
-        loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
-          <AppContext.Provider value={{
-            user,
-            setUser,
-            redirectToLogin,
-            setRedirectToLogin,
-            connection,
-            setConnection,
-            roomInfo,
-            setRoomInfo,
-            matchInfo,
-            setMatchInfo,
-            listCoordinates,
-            setListCoordinates,
-            step,
-            setStep,
-            yourTurn,
-            setYourTurn,
-            start,
-            setStart,
-            newGame,
-            setNewGame,
-            watchMode,
-            setWatchMode
-          }}>
-            {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
-            {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
-            {step === 3 ? <InGame /> : <></>}
-          </AppContext.Provider>
-      }
-
-      {
-        messageQueue.length ?
-          <div className="message-queue">
-            {
-              messageQueue.map((mq, idx) => (
-                <div className="message-card">
-                  <div className="title">
-                    <div className='from-user'>
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        size='small'
-                        icon={mq.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
-                        onClick={() => handleHideMesssge(idx)}
-                      />
-                      From: {mq.fromUser}
-                    </div>
-                    <div className="close-message-action">
-                      <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
-                        onClick={() => handleCloseMesssge(idx)}
-                      />
-                    </div>
+    <>
+      <Affix offsetTop={0} style={{ marginBottom: 10 }}>
+        <div className="header">
+          <div className="notifications"></div>
+          {
+            user ? <div className='profile'>
+              <Popover placement="bottomLeft" title={""} content={
+                <div style={{ display: "flex", flexDirection: "column", flexWrap: "nowrap", justifyContent: "center", alignItems: "center" }}>
+                  <div>Hello {user.userName}</div>
+                  <div className='match-info'>
+                    <div><b>Matchs:</b> <span style={{ color: "#4096ff", fontWeight: "bold" }}>{user.numberOfMatchs}</span></div>
+                    <div><b>Win/Lose:</b> <span style={{ color: "#52c41a", fontWeight: "bold" }}>{user.winMatchs}</span>/<span style={{ color: "#FA541C", fontWeight: "bold" }}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
                   </div>
-                  <div className={mq.open ? "card-body" : "card-body close"}>
-                    <div className="content">
-                      <div className="messages">
-                        {
-                          mq.messages.map(ms => (
-                            <Collapse
-                              className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
-                              items={[{
-                                key: ms.id,
-                                label: <span>{ms.message}</span>,
-                                children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
-                              }]}
-                              expandIcon={() =>
-                                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                  {user?.userName}
-                                </Avatar>
-                              }
-                              size="small"
-                              expandIconPosition={ms.isMyMessage ? "start" : "end"}
-                            />
-                          ))
-                        }
-                      </div>
-                      <div ref={el => pushMessageRef(el!, idx)} />
-                    </div>
-                    <div className="send-action">
-                      <Search
-                        placeholder="Type your messages here"
-                        enterButton={<SendOutlined />}
-                        size="middle"
-
-                        onSearch={(value: string) => handleSendMessage(mq, value, idx)}
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
+                  <Button type="link">Your profile</Button>
+                  <Button type="dashed" onClick={logOut}>Log out</Button>
                 </div>
-              ))
-            }
+              } trigger="click">
+                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
+                  {generateShortUserName(user.userName)}
+                </Avatar>
+              </Popover>
 
-          </div>
-          :
-          <></>
-      }
+            </div> : <></>
+          }
 
-    </div >
+        </div>
 
+      </Affix>
+      <div className='container'>
+        {contextHolder}
+        {
+          loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
+            <AppContext.Provider value={{
+              user,
+              setUser,
+              redirectToLogin,
+              setRedirectToLogin,
+              connection,
+              setConnection,
+              roomInfo,
+              setRoomInfo,
+              matchInfo,
+              setMatchInfo,
+              listCoordinates,
+              setListCoordinates,
+              step,
+              setStep,
+              yourTurn,
+              setYourTurn,
+              start,
+              setStart,
+              newGame,
+              setNewGame,
+              watchMode,
+              setWatchMode
+            }}>
+              {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
+              {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
+              {step === 3 ? <InGame /> : <></>}
+            </AppContext.Provider>
+        }
 
+        {
+          messageQueue.length ?
+            <div className="message-queue">
+              {
+                messageQueue.map((mq, idx) => (
+                  <div className="message-card">
+                    <div className="title">
+                      <div className='from-user'>
+                        <Button
+                          type="primary"
+                          shape="circle"
+                          size='small'
+                          icon={mq.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
+                          onClick={() => handleHideMesssge(idx)}
+                        />
+                        From: {mq.fromUser}
+                      </div>
+                      <div className="close-message-action">
+                        <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
+                          onClick={() => handleCloseMesssge(idx)}
+                        />
+                      </div>
+                    </div>
+                    <div className={mq.open ? "card-body" : "card-body close"}>
+                      <div className="content">
+                        <div className="messages">
+                          {
+                            mq.messages.map(ms => (
+                              <Collapse
+                                className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
+                                items={[{
+                                  key: ms.id,
+                                  label: <span>{ms.message}</span>,
+                                  children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
+                                }]}
+                                expandIcon={() =>
+                                  <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
+                                    {user?.userName}
+                                  </Avatar>
+                                }
+                                size="small"
+                                expandIconPosition={ms.isMyMessage ? "start" : "end"}
+                              />
+                            ))
+                          }
+                        </div>
+                        <div ref={el => pushMessageRef(el!, idx)} />
+                      </div>
+                      <div className="send-action">
+                        <Search
+                          placeholder="Type your messages here"
+                          enterButton={<SendOutlined />}
+                          size="middle"
+
+                          onSearch={(value: string) => handleSendMessage(mq, value, idx)}
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+                ))
+              }
+
+            </div>
+            :
+            <></>
+        }
+
+      </div >
+    </>
   );
 }
 
