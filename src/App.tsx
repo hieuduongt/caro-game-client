@@ -79,6 +79,7 @@ const App: FC = () => {
         placement: "top"
       });
       addNewErrorMessage(SystemString.CannotConnectToServer);
+      setLoading(false);
     });
   }
 
@@ -109,8 +110,8 @@ const App: FC = () => {
       return res.responseData.roomId ? true : false;
     } else {
       addNewErrorMessage(res.errorMessage);
+      return false;
     }
-    return false;
   }
 
   const logOut = (): void => {
