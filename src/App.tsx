@@ -12,6 +12,7 @@ import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthTok
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, Message, MessageDto, Conversation, RoomDTO, UserDTO, ErrorMessage } from './models/Models';
 import { createConversation, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
+import { SystemString } from './common/StringHelper';
 const { Search } = Input;
 
 const App: FC = () => {
@@ -73,10 +74,12 @@ const App: FC = () => {
     }).catch((error) => {
       api.error({
         message: 'Connect Failed',
-        description: "Cannot connect to server with error: " + error.toString(),
+        description: SystemString.CannotConnectToServer,
         duration: -1,
         placement: "top"
       });
+      addNewErrorMessage(SystemString.CannotConnectToServer);
+      setLoading(false);
     });
   }
 
@@ -105,8 +108,10 @@ const App: FC = () => {
       }
       setUser(currentUser);
       return res.responseData.roomId ? true : false;
+    } else {
+      addNewErrorMessage(res.errorMessage);
+      return false;
     }
-    return false;
   }
 
   const logOut = (): void => {
