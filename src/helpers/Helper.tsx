@@ -21,10 +21,25 @@ const EnvEnpoint = (): string => {
     }
 }
 
+const formatUTCDateToLocalDate = (date: Date): string => {
+    let localDate;
+    if (isIsoDate(date.toString())) {
+        localDate = new Date(date.toString() + "Z");
+    } else {
+        localDate = new Date(date.toString());
+    }
+    return `${localDate.getHours()}:${localDate.getMinutes()}:${localDate.getSeconds()} ${localDate.getDate()}/${localDate.getUTCMonth() + 1}/${localDate.getFullYear()}`
+}
+
+const isIsoDate = (str: string) => {
+    if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3,10}$/.test(str)) return true;
+    return false;
+}
+
 const generateShortUserName = (userName: string): string => {
     const seperatedWords = userName.split(" ");
     let returnName = "";
-    if(seperatedWords.length > 1) {
+    if (seperatedWords.length > 1) {
         const firstLetter = seperatedWords[0][0];
         const lastLetter = seperatedWords[seperatedWords.length - 1][0];
         returnName = firstLetter.toLowerCase() + lastLetter.toUpperCase();
@@ -142,7 +157,7 @@ const removeAuthToken = (): void => {
 
 const getTokenProperties = (name?: "exp" | "role" | "nameidentifier" | "name"): any => {
     const token = getAuthToken();
-    
+
     if (token) {
         const result: DecodedToken = {
             exp: undefined,
@@ -155,12 +170,12 @@ const getTokenProperties = (name?: "exp" | "role" | "nameidentifier" | "name"): 
         type ObjectKey = keyof typeof decoded;
         const objKeys = Object.keys(decoded);
         for (const it of objKeys) {
-            if(/^exp$/g.test(it)) result.exp =  decoded[it as ObjectKey];
-            if(/\/role$/g.test(it)) result.role = decoded[it as ObjectKey];
-            if(/\/nameidentifier$/g.test(it)) result.nameidentifier = decoded[it as ObjectKey];
-            if(/\/name$/g.test(it)) result.name = decoded[it as ObjectKey];  
+            if (/^exp$/g.test(it)) result.exp = decoded[it as ObjectKey];
+            if (/\/role$/g.test(it)) result.role = decoded[it as ObjectKey];
+            if (/\/nameidentifier$/g.test(it)) result.nameidentifier = decoded[it as ObjectKey];
+            if (/\/name$/g.test(it)) result.name = decoded[it as ObjectKey];
         }
-        if(name) {
+        if (name) {
             return result[name as TokenKey];
         } else {
             return result;
@@ -188,11 +203,11 @@ const isExpired = (): boolean => {
     if (token) {
         var decoded = jwtDecode(token);
         const expireDate = decoded["exp"];
-        const date = new Date(expireDate? (expireDate * 1000) : "");
+        const date = new Date(expireDate ? (expireDate * 1000) : "");
         const today = new Date();
         return date < today;
     }
     return false;
 }
 
-export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName }
+export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName, formatUTCDateToLocalDate }

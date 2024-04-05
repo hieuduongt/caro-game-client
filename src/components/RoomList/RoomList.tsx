@@ -1,18 +1,19 @@
-import { FC, useContext, useEffect, useRef, useState } from "react";
+import React, { FC, forwardRef, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
-import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar, Popover } from 'antd';
+import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar } from 'antd';
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import { RoomDTO, UserDTO, Pagination, Status, ActionRoomDTO, Roles } from "../../models/Models";
+import { RoomDTO, UserDTO, Pagination, Status, Roles, RoleDTO } from "../../models/Models";
 import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
-import { getTokenProperties, removeAuthToken } from "../../helpers/Helper";
+import { getTokenProperties } from "../../helpers/Helper";
 import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
 import { RiLoginCircleLine } from "react-icons/ri";
+import { SystemString } from "../../common/StringHelper";
 const { Search } = Input;
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
-
+    handleWhenClickOnChatButton: (data: UserDTO) => void;
 }
 
 const CustomRow: FC<any> = (props) => {
@@ -24,8 +25,9 @@ const CustomRow: FC<any> = (props) => {
 }
 
 const RoomList: FC<RoomListProps> = (props) => {
+    const { handleWhenClickOnChatButton } = props;
     const [roomCreationForm] = Form.useForm<RoomDTO>();
-    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep } = useContext(AppContext);
+    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep, addNewErrorMessage } = useContext(AppContext);
     const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
     const [roomSearchKeywords, setRoomSearchKeywords] = useState<string>("");
     const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();
@@ -114,10 +116,14 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Role',
             dataIndex: 'role',
             key: 'role',
-            render: (roles: string[]) => {
-                const data = Roles.find(r => r.value === roles[0]);
+            render: (roles: RoleDTO[]) => {
+                const data = roles.map(rs => {
+                    return Roles.find(r => r.value === rs.name);
+                })
                 return (
-                    <Tag color={data?.color}>{data?.value}</Tag>
+                    data.map(d => (
+                        <Tag color={d?.color}>{d?.value}</Tag>
+                    )) 
                 )
             }
         },
@@ -158,8 +164,8 @@ const RoomList: FC<RoomListProps> = (props) => {
         {
             title: 'Action',
             key: 'action',
-            render: (_, record) => (
-                <Button icon={<SendOutlined />} type="text">Chat</Button>
+            render: (_, record: UserDTO) => (
+                <Button icon={<SendOutlined />} onClick={() => handleWhenClickOnChatButton(record)} type="text">Chat</Button>
             )
         },
     ];
@@ -169,10 +175,14 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await getAllRooms(search, page, pageSize);
         if (res.isSuccess === true) {
             setListRooms(res.responseData);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
             setRedirectToLogin(true);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         setRoomReloadState(false);
     }
@@ -182,6 +192,8 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await getAllUsers(search, page, pageSize);
         if (res.isSuccess === true) {
             setListUsers(res.responseData);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
@@ -189,7 +201,6 @@ const RoomList: FC<RoomListProps> = (props) => {
         }
         setUserReloadState(false);
     }
-
 
     useEffect(() => {
         if (cLoaded.current) return;
@@ -207,7 +218,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             });
         }
         cLoaded.current = true;
-    }, [connection]);
+    }, []);
 
     const handleCreate = async (): Promise<void> => {
         roomCreationForm
@@ -236,29 +247,32 @@ const RoomList: FC<RoomListProps> = (props) => {
                             placement: "top"
                         })
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setIsCreating(false);
                 }
             })
             .catch((info) => {
+                addNewErrorMessage(SystemString.ValidationError);
                 setIsCreating(false);
             });
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
-        const currentRoom: ActionRoomDTO = {
-            id: room.id,
-            userId: user.id
-        }
-        const res = await joinRoom(currentRoom);
+
+        const res = await joinRoom(room.id);
         if (res.isSuccess) {
-            const room = await getRoom(currentRoom.id);
+            const currentRoomRes = await getRoom(room.id);
             const newUser: UserDTO = user;
-            if (room.isSuccess && room.responseData) {
-                setRoomInfo(room.responseData);
-                newUser.roomId = room.responseData.id;
+            if (currentRoomRes.isSuccess && currentRoomRes.responseData) {
+                setRoomInfo(currentRoomRes.responseData);
+                newUser.roomId = currentRoomRes.responseData.id;
                 setUser(newUser);
                 setStep(3);
+            } else {
+                addNewErrorMessage(currentRoomRes.errorMessage);
             }
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
@@ -298,13 +312,6 @@ const RoomList: FC<RoomListProps> = (props) => {
         await getListRooms(roomSearchKeywords, page, pageSize);
     }
 
-    const logOut = (): void => {
-        setUser(undefined);
-        removeAuthToken();
-        setStep(1);
-        connection?.stop();
-    }
-
     return (
         <div className='in-room-container'>
             {contextHolder}
@@ -340,7 +347,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                     <Table
                         pagination={{ position: ["bottomCenter"], pageSize: listUsers?.pageSize, current: listUsers?.currentPage, total: listUsers?.totalRecords, onChange: handleWhenUserPaginationChange }}
                         columns={userColumns}
-                        dataSource={listUsers?.items}
+                        dataSource={listUsers?.items?.filter(u => u.id !== user.id) || []}
                         title={() =>
                             <>
                                 <Search className="input-search-user" addonBefore={<UserOutlined />} placeholder="input user name" allowClear size="large" onSearch={handleWhenSearchUser} />
@@ -351,7 +358,6 @@ const RoomList: FC<RoomListProps> = (props) => {
                     />
                 </div>
             </div>
-
             <Modal
                 open={openCreateRoom}
                 title="Create a new room"

@@ -3,7 +3,7 @@ import GameGrid from "../GameGrid/GameGrid";
 import GameMenu from "../GameMenu/GameMenu";
 import './Ingame.css'
 import { AppContext } from "../../helpers/Context";
-import { Coordinates, MatchDTO, Player } from "../../models/Models";
+import { Coordinates, Player } from "../../models/Models";
 import { getCurrentMatchByUserId, getListCoordinates } from '../../services/GameServices';
 import { notification } from 'antd';
 interface InGameProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -11,8 +11,7 @@ interface InGameProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const InGame: FC<InGameProps> = (props) => {
-  const { user, roomInfo, setStart, setMatchInfo, setWatchMode, setListCoordinates, setYourTurn } = useContext(AppContext);
-  const [api, contextHolder] = notification.useNotification();
+  const { user, roomInfo, setStart, setMatchInfo, setWatchMode, setListCoordinates, setYourTurn, addNewErrorMessage } = useContext(AppContext);
   useEffect(() => {
     if (roomInfo?.matchs?.length > 0) {
       getCurrentMatchInfo();
@@ -23,6 +22,8 @@ const InGame: FC<InGameProps> = (props) => {
     const match = await getCurrentMatchByUserId(user.id);
     if (match.isSuccess) {
       setMatchInfo(match.responseData);
+    } else {
+      addNewErrorMessage(match.errorMessage);
     }
     const listCoordinates = await getListCoordinates(roomInfo?.matchs[0].matchId);
       if (listCoordinates.isSuccess) {
@@ -47,17 +48,11 @@ const InGame: FC<InGameProps> = (props) => {
           setWatchMode(true);
         }
       } else {
-        api.error({
-          message: 'Connect Failed',
-          description: "Cannot connect to server with error: " + listCoordinates.errorMessage,
-          duration: -1,
-          placement: "top"
-        });
+        addNewErrorMessage(listCoordinates.errorMessage);
       }
   }
   return (
     <div className='in-game-container'>
-      {contextHolder}
       <GameMenu />
       <GameGrid initialPlayer={user.isRoomOwner ? Player.PlayerO : Player.PlayerX} />
     </div>

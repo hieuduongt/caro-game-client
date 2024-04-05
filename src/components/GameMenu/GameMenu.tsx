@@ -6,8 +6,8 @@ import { AiOutlineSend } from "react-icons/ai";
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
-import { ActionRoomDTO, MatchDTO, Message, UserDTO } from '../../models/Models';
-import { getRoomByUser, leaveRoom, updateSitting } from '../../services/RoomServices';
+import { MatchDTO, Message, UserDTO } from '../../models/Models';
+import { getRoomOfCurrentUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
 import { finishGame, startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
@@ -17,7 +17,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode } = useContext(AppContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewErrorMessage } = useContext(AppContext);
     const [messages, setMessages] = useState<Message[]>();
     const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
@@ -26,7 +26,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [api, contextHolder] = notification.useNotification();
 
     const getRoomInfo = async (): Promise<void> => {
-        const currentRoom = await getRoomByUser(user.id);
+        const currentRoom = await getRoomOfCurrentUser();
         if (currentRoom.isSuccess) {
             setRoomInfo(currentRoom.responseData);
             const sittedMember = currentRoom.responseData.members?.find(m => m.sitting && !m.isRoomOwner);
@@ -35,6 +35,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             } else {
                 setSitted(false);
             }
+        } else {
+            addNewErrorMessage(currentRoom.errorMessage);
         }
     }
 
@@ -42,6 +44,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         const res = await getUser(user.id);
         if (res.isSuccess) {
             setUser(res.responseData);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
@@ -52,7 +56,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 userId: user.id,
                 userName: userName || "",
                 isMyMessage: false,
-                message: message
+                message: message,
+                isNewMessage: true
             }
             newMess.push(mess);
             return newMess;
@@ -161,7 +166,10 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             }
             delete u.time;
         });
-        await finishGame(match);
+        const result = await finishGame(match);
+        if (!result.isSuccess) {
+            addNewErrorMessage(result.errorMessage);
+        }
         await getRoomInfo();
         setStart(false);
     }
@@ -175,13 +183,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     };
 
     const handleWhenLeaveRoom = async (): Promise<void> => {
-        const isOwner: boolean = roomInfo.members.find((m: UserDTO) => m.id === user.id && m.isRoomOwner === true) ? true : false;
-        const room: ActionRoomDTO = {
-            id: roomInfo.id,
-            userId: user.id,
-            isRoomOwner: isOwner
-        }
-        const res = await leaveRoom(room);
+        const res = await leaveRoom(roomInfo.id);
         if (res.isSuccess === true) {
             await getUserInfo();
             setRoomInfo(undefined);
@@ -193,17 +195,20 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 duration: 3,
                 placement: "top"
             });
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
     const handleWhenSitting = async (): Promise<void> => {
         if (user.isRoomOwner || sitted) return;
         if (roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id) return;
-        const res = await updateSitting(roomInfo.id, user.id, true, false);
+        const res = await sit(roomInfo.id);
         if (res.isSuccess) {
             await getRoomInfo();
             await getUserInfo();
             setSitted(true);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
@@ -215,13 +220,15 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         } else {
             userId = user.id;
         }
-        const res = await updateSitting(roomInfo.id, userId, false, user.isRoomOwner ? true : false);
+        const res = await leaveTheSit(roomInfo.id, userId);
         if (res.isSuccess) {
             if (!user.isRoomOwner) {
                 await getRoomInfo();
                 await getUserInfo();
             }
             setSitted(false);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
@@ -247,6 +254,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 duration: 3,
                 placement: "top"
             });
+            addNewErrorMessage(res.errorMessage);
         }
     }
 
@@ -292,7 +300,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 <div className="player">
                     <div className='player-title'>
                         <Button type="primary" danger shape="round" disabled={user.isRoomOwner ? false : user.id === roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.id ? false : true} size='small' icon={<CloseOutlined />} onClick={handleWhenLeaveSitting}>
-                            {user.isRoomOwner ? "Kick" : "Leave"}
+                            {user.isRoomOwner ? "Kick" : "Leave The Sit"}
                         </Button>
                         <div className='time'>
                             {start || watchMode ?

@@ -1,9 +1,11 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useContext, useEffect, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
 import { login, register } from "../../services/AuthServices";
 import { setAuthToken } from "../../helpers/Helper";
+import { AppContext } from "../../helpers/Context";
+import { SystemString } from "../../common/StringHelper";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
@@ -11,6 +13,7 @@ interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Home: FC<HomeProps> = (props) => {
+    const { addNewErrorMessage } = useContext(AppContext);
     const { redirectToLogin, connectToGameHub } = props;
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
@@ -47,10 +50,12 @@ const Home: FC<HomeProps> = (props) => {
                             placement: "top"
                         })
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setLoggingIn(false);
                 }
             })
             .catch((info) => {
+                addNewErrorMessage(SystemString.ValidationError);
                 setLoggingIn(false);
             });
     }
@@ -77,14 +82,26 @@ const Home: FC<HomeProps> = (props) => {
                             description: it,
                             duration: -1,
                             placement: "top"
-                        })
+                        });
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setRegistering(false);
                 }
             })
             .catch((info) => {
+                console.log(info)
+                addNewErrorMessage(SystemString.ValidationError);
                 setRegistering(false);
             });
+    }
+
+    const playAsGuest = () => {
+        api.info({
+            message: 'Not Support Features',
+            description: "This feature is under developed and not release yet, so to play, please register the account and login into system to play with other players!",
+            duration: -1,
+            placement: "top"
+        });
     }
 
     return (
@@ -98,7 +115,7 @@ const Home: FC<HomeProps> = (props) => {
                     <Button type="default" icon={<UserAddOutlined />} size={"large"} onClick={() => setOpenRegisterForm(true)}>
                         Register
                     </Button>
-                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => { }}>
+                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => playAsGuest()}>
                         Play as guest
                     </Button>
                 </Flex>
@@ -136,7 +153,7 @@ const Home: FC<HomeProps> = (props) => {
                     labelCol={{ span: 8 }}
                     wrapperCol={{ span: 16 }}
                     onKeyDown={(e) => {
-                        if(e.code && e.code.includes('Enter')) {
+                        if (e.code && e.code.includes('Enter')) {
                             handleLogin();
                         }
                     }}
@@ -191,23 +208,63 @@ const Home: FC<HomeProps> = (props) => {
                     <Form.Item
                         name="email"
                         label="Email"
-                        rules={[{ required: true, message: 'Please input your email' }]}
+                        rules={
+                            [
+                                { 
+                                    required: true, 
+                                    message: 'Please input your E-mail!' 
+                                },
+                                {
+                                    type: "email",
+                                    message: "The input is not valid E-mail!"
+                                }
+                            ]
+                        }
                     >
                         <Input type="text" />
                     </Form.Item>
                     <Form.Item
                         name="password"
                         label="Password"
-                        rules={[{ required: true, message: 'Please input your password' }]}
+                        rules={
+                            [
+                                {
+                                    required: true,
+                                    message: 'Please input your password'
+                                },
+                                {
+                                    pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W])(?!.*\s).{8,}$/,
+                                    message: 'Your password must contain eight characters including numbers, lower and uppercase letters, and at least one special character!'
+                                }
+                            ]
+                        }
+                        hasFeedback
                     >
                         <Input.Password type="password" />
                     </Form.Item>
                     <Form.Item
+                        dependencies={['password']}
                         name="rePassword"
-                        label="Retype Your Password"
-                        rules={[{ required: true, message: 'Please input your password again' }]}
+                        label="Confirm Your Password"
+                        hasFeedback
+                        rules={
+                            [
+                                {
+                                    required: true,
+                                    message: 'Please confirm your password!'
+                                },
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                      if (!value || getFieldValue('password') === value) {
+                                        return Promise.resolve();
+                                      }
+                                      return Promise.reject(new Error('The new password that you entered do not match!'));
+                                    },
+                                  }),
+                            ]
+                        }
                     >
-                        <Input.Password type="password" />
+                        <Input.Password type="password"/>
                     </Form.Item>
                 </Form>
             </Modal>

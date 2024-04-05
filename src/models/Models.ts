@@ -4,6 +4,11 @@ export interface LoginDTO {
     password: string;
 }
 
+export interface ErrorMessage {
+    id: string;
+    content: string;
+}
+
 export interface RegisterDTO {
     username: string;
     email: string;
@@ -47,12 +52,6 @@ export interface RoomDTO {
     matchs?: MatchDTO[];
 }
 
-export interface ActionRoomDTO {
-    id: string;
-    userId: string;
-    isRoomOwner?: boolean;
-}
-
 export interface UserDTO {
     id: string;
     roomId: string;
@@ -60,7 +59,7 @@ export interface UserDTO {
     sitting: boolean;
     userName: string;
     email: string;
-    role: string[];
+    role: RoleDTO[];
     status: AccountStatus;
     createdDate: Date;
     lastActiveDate: Date;
@@ -73,11 +72,40 @@ export interface UserDTO {
     winMatchs: number;
 }
 
+export interface RoleDTO {
+    name: string;
+}
+
 export interface Message {
+    id?: string;
     userId: string;
     userName: string;
     message: string;
     isMyMessage: boolean;
+    isNewMessage: boolean;
+    updatedDate?: Date;
+    createdDate?: Date;
+}
+
+export interface Conversation {
+    id: string;
+    open: boolean;
+    users: UserDTO[];
+    fromUserId?: string;
+    toUserId?: string;
+    messages: Message[];
+}
+
+export interface MessageDto {
+    id?: string;
+    content: string;
+    userId?: string;
+    toUserId?: string;
+    roomId?: string;
+    updatedDate?: Date;
+    createdDate?: Date;
+    conversationId?: string;
+    conversation?: Conversation;
 }
 
 export interface MatchDTO {
