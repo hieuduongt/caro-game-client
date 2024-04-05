@@ -2,7 +2,7 @@ import React, { FC, forwardRef, useContext, useEffect, useRef, useState } from "
 import './RoomList.css';
 import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar } from 'antd';
 import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import { RoomDTO, UserDTO, Pagination, Status, Roles, MessageQueue, MessageDto, RoleDTO } from "../../models/Models";
+import { RoomDTO, UserDTO, Pagination, Status, Roles, RoleDTO } from "../../models/Models";
 import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
 import { getTokenProperties } from "../../helpers/Helper";
@@ -10,6 +10,7 @@ import { getAllUsers } from "../../services/UserServices";
 import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
 import { RiLoginCircleLine } from "react-icons/ri";
+import { SystemString } from "../../common/StringHelper";
 const { Search } = Input;
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
     handleWhenClickOnChatButton: (data: UserDTO) => void;
@@ -26,7 +27,7 @@ const CustomRow: FC<any> = (props) => {
 const RoomList: FC<RoomListProps> = (props) => {
     const { handleWhenClickOnChatButton } = props;
     const [roomCreationForm] = Form.useForm<RoomDTO>();
-    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep } = useContext(AppContext);
+    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep, addNewErrorMessage } = useContext(AppContext);
     const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
     const [roomSearchKeywords, setRoomSearchKeywords] = useState<string>("");
     const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();
@@ -174,10 +175,14 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await getAllRooms(search, page, pageSize);
         if (res.isSuccess === true) {
             setListRooms(res.responseData);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
             setRedirectToLogin(true);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         setRoomReloadState(false);
     }
@@ -187,6 +192,8 @@ const RoomList: FC<RoomListProps> = (props) => {
         const res = await getAllUsers(search, page, pageSize);
         if (res.isSuccess === true) {
             setListUsers(res.responseData);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
@@ -240,10 +247,12 @@ const RoomList: FC<RoomListProps> = (props) => {
                             placement: "top"
                         })
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setIsCreating(false);
                 }
             })
             .catch((info) => {
+                addNewErrorMessage(SystemString.ValidationError);
                 setIsCreating(false);
             });
     }
@@ -259,7 +268,11 @@ const RoomList: FC<RoomListProps> = (props) => {
                 newUser.roomId = currentRoomRes.responseData.id;
                 setUser(newUser);
                 setStep(3);
+            } else {
+                addNewErrorMessage(currentRoomRes.errorMessage);
             }
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
     }
 

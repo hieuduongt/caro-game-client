@@ -1,6 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input } from 'antd';
+import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Tooltip, Badge } from 'antd';
 import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
@@ -9,8 +10,8 @@ import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, Message, MessageDto, MessageQueue, RoomDTO, UserDTO } from './models/Models';
-import { getMessage, sendMessageToUser } from './services/ChatServices';
+import { Coordinates, MatchDTO, Message, MessageDto, Conversation, RoomDTO, UserDTO, ErrorMessage } from './models/Models';
+import { createConversation, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
 const { Search } = Input;
 
 const App: FC = () => {
@@ -29,9 +30,12 @@ const App: FC = () => {
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
-  const [messageQueue, setMessageQueue] = useState<MessageQueue[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
   const messageRefs = useRef<Array<HTMLDivElement>>([]);
+  const [errorMessages, setErrorMessages] = useState<ErrorMessage[]>([]);
+  const [currentErrorMessages, setCurrentErrorMessages] = useState<ErrorMessage>();
+  const [expandErrMessage, setExpandErrMessage] = useState<boolean>(false);
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -149,138 +153,143 @@ const App: FC = () => {
   }, [newReceivedMessage]);
 
   useEffect(() => {
-    if (messageRefs.current![messageQueue.length - 1]) {
-      messageRefs.current![messageQueue.length - 1].scrollIntoView({ behavior: "smooth", block: "start" });
+    if (messageRefs.current![conversations.length - 1]) {
+      messageRefs.current![conversations.length - 1].scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [messageQueue]);
+  }, [conversations]);
 
   const pushMessageRef = (el: HTMLDivElement, idx: number) => messageRefs.current[idx] = el;
 
   const handleWhenReceivingMessages = async (data: MessageDto) => {
-    let newArr = [...messageQueue];
+    let newConversations = [...conversations];
     let idx: number = -1;
     const newMessage: Message = {
       isMyMessage: false,
       message: data.content,
-      userId: data.fromUserId || data.fromUser?.id || "",
-      userName: data.fromUser!.userName || "",
+      userId: data.userId || "",
+      userName: "",
       isNewMessage: true,
       createdDate: data.createdDate,
       updatedDate: data.updatedDate
     }
-    const currentMessageQueue = newArr.some((mq: MessageQueue) => mq.fromUserId === data.fromUserId || mq.fromUserId === data.fromUser?.id);
-    if (!currentMessageQueue) {
-      const res = await getMessage(data.fromUserId || data.fromUser?.id || "");
-      if (res.isSuccess) {
-        const allMessages: Message[] = res.responseData.map((m, index) => {
-          const message: Message = {
-            isMyMessage: m.fromUserId === user?.id,
-            message: m.content,
-            userId: m.toUserId || "",
-            userName: m.fromUser?.userName || "",
-            isNewMessage: false,
-            createdDate: data.createdDate,
-            updatedDate: data.updatedDate
-          }
-          return message;
-        });
-        const newMessageQueue: MessageQueue = {
-          fromUser: data.fromUser!.userName,
-          fromUserId: data.fromUserId || data.fromUser?.id || "",
-          messages: allMessages,
-          open: true
-        };
-        newArr.push(newMessageQueue);
+    const currentConversation = newConversations.some((c: Conversation) => c.id === data.conversationId);
+    if (!currentConversation) {
+      let newConversation: Conversation;
+      const converRes = await getConversation(data.userId || "");
+      if (converRes.isSuccess && converRes.responseData) {
+        newConversation = converRes.responseData;
+        newConversation.open = true;
+        const messages = await getMessage(converRes.responseData.id);
+        if (messages.isSuccess && messages.responseData.length) {
+          newConversation.messages = messages.responseData.map(m => {
+            const newMessage: Message = {
+              id: m.id,
+              message: m.content,
+              isMyMessage: m.userId === user?.id,
+              createdDate: m.createdDate,
+              updatedDate: m.updatedDate,
+              isNewMessage: false,
+              userId: m.userId || "",
+              userName: newConversation.users.find(u => u.id === m.userId)?.userName || ""
+            }
+            return newMessage;
+          });
+        }
+        newConversations.push(newConversation);
       }
     } else {
-      for (let index = 0; index < newArr.length; index++) {
-        const currentMessageQueue = newArr[index];
-        if (currentMessageQueue.fromUserId === data.fromUserId) {
-          currentMessageQueue.messages.push(newMessage);
+      for (let index = 0; index < newConversations.length; index++) {
+        const currentConversation = newConversations[index];
+        if (currentConversation.id === data.conversationId) {
+          currentConversation.messages.push(newMessage);
           idx = index;
           break;
         }
       }
-      messageRefs.current![idx].scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    setMessageQueue(newArr);
+    setConversations(newConversations);
     if (idx >= 0) {
       messageRefs.current![idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       messageRefs.current![0]?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-
   }
 
   const handleWhenClickOnChatButton = async (data: UserDTO) => {
-    let newArr = [...messageQueue];
-    const currentMessageQueue = newArr.some((mq: MessageQueue) => mq.fromUserId === data.id);
-    if (!currentMessageQueue) {
-      const res = await getMessage(data.id);
-      if (res.isSuccess) {
-        if (res.responseData) {
-          const messages: Message[] = res.responseData.map((m, index) => {
-            const message: Message = {
-              isMyMessage: m.fromUserId === user?.id,
+    let newConversations = [...conversations];
+    const currentConversation = newConversations.some((c: Conversation) => c.users.find(u => u.id === data.id));
+    if (!currentConversation) {
+      let newConversation: Conversation;
+      const res = await getConversation(data.id);
+      if (res.isSuccess && res.responseData) {
+        newConversation = res.responseData;
+        newConversation.open = true;
+        const messages = await getMessage(res.responseData.id);
+        if (messages.isSuccess && messages.responseData.length) {
+          newConversation.messages = messages.responseData.map(m => {
+            const newMessage: Message = {
+              id: m.id,
               message: m.content,
-              userId: m.toUserId || "",
-              userName: m.fromUser?.userName || "",
-              isNewMessage: index === res.responseData.length - 1 ? true : false,
+              isMyMessage: m.userId === user?.id,
               createdDate: m.createdDate,
-              updatedDate: m.updatedDate
+              updatedDate: m.updatedDate,
+              isNewMessage: false,
+              userId: m.userId || "",
+              userName: newConversation.users.find(u => u.id === m.userId)?.userName || ""
             }
-            return message;
+            return newMessage;
           });
-          const newMessageQueue: MessageQueue = {
-            fromUser: data.userName,
-            fromUserId: data.id,
-            messages: messages,
-            open: true
-          };
-          newArr.push(newMessageQueue);
+        }
+        newConversations.push(newConversation);
+      } else {
+        const createNewConvRes = await createConversation(data.id);
+        if (createNewConvRes.isSuccess) {
+          newConversations.push(createNewConvRes.responseData);
         }
       }
     } else {
-      for (let index = 0; index < newArr.length; index++) {
-        const currentMessageQueue = newArr[index];
-        if (currentMessageQueue.fromUserId === data.id) {
-          currentMessageQueue.open = true;
+      for (let index = 0; index < newConversations.length; index++) {
+        const currentConversation = newConversations[index];
+        if (currentConversation.fromUserId === data.id || currentConversation.toUserId === data.id) {
+          currentConversation.open = true;
           break;
         }
       }
     }
-    setMessageQueue(newArr);
+    setConversations(newConversations);
   }
 
-  const handleSendMessage = async (data: MessageQueue, value: string, idx: number) => {
+  const handleSendMessage = async (data: Conversation, value: string, idx: number) => {
     if (!value) return;
     const newMessageDto: MessageDto = {
-      toUserId: data.fromUserId,
+      conversationId: data.id,
       content: value,
+      userId: user?.id,
+      toUserId: data.users.find(u => u.id !== user?.id)?.id
     }
 
     const res = await sendMessageToUser(newMessageDto);
     if (res.isSuccess) {
 
-      let newArr = [...messageQueue];
+      let newArr = [...conversations];
       const newMessage: Message = {
         isMyMessage: true,
         message: value,
-        userId: data.fromUserId,
-        userName: data.fromUser,
+        userId: user?.id || "",
+        userName: user?.userName || "",
         isNewMessage: true,
         createdDate: new Date(),
         updatedDate: new Date()
       };
       for (let index = 0; index < newArr.length; index++) {
         const currentMessageQueue = newArr[index];
-        if (currentMessageQueue.fromUserId === data.fromUserId) {
+        if (currentMessageQueue.id === data.id) {
           currentMessageQueue.messages.push(newMessage);
           break;
         }
       }
-      setMessageQueue(newArr);
+      setConversations(newArr);
     } else {
       api.error({
         message: 'Send Failed',
@@ -301,7 +310,7 @@ const App: FC = () => {
   }
 
   const handleHideMesssge = (idx: number) => {
-    setMessageQueue(prev => {
+    setConversations(prev => {
       const arr = [...prev];
       arr[idx].open = !arr[idx].open;
       return arr;
@@ -309,18 +318,112 @@ const App: FC = () => {
   }
 
   const handleCloseMesssge = (idx: number) => {
-    setMessageQueue(prev => {
+    setConversations(prev => {
       const arr = [...prev];
       arr.splice(idx, 1);
       return arr;
     });
   }
 
+  const handleCloseErrorMessage = (id: string) => {
+    const filteredErrorMessages = [...errorMessages].filter(p => p.id !== id);
+    setErrorMessages(filteredErrorMessages);
+    setCurrentErrorMessages(filteredErrorMessages[filteredErrorMessages.length - 1]);
+    if (!filteredErrorMessages.length) setExpandErrMessage(false);
+  }
+
+  const addNewErrorMessage = (content: string | string[]) => {
+    if (Array.isArray(content)) {
+      const messages = content.map(c => {
+        const mess: ErrorMessage = {
+          id: uuidv4(),
+          content: c
+        };
+        return mess;
+      });
+      setErrorMessages(prev => [...prev, ...messages]);
+      setCurrentErrorMessages(messages[messages.length - 1]);
+    } else {
+      setErrorMessages(prev => [...prev, {
+        id: uuidv4(),
+        content: content
+      }]);
+      setCurrentErrorMessages({
+        id: uuidv4(),
+        content: content
+      });
+    }
+  }
+
   return (
     <>
       <Affix offsetTop={0} style={{ marginBottom: 10 }}>
         <div className="header">
-          <div className="notifications"></div>
+          <div className="author">
+            <div>
+              <Avatar src={<img src="app-logo.PNG" style={{ width: "100%", height: "100%" }} />} style={{ verticalAlign: 'middle', boxShadow: "rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }} size={50} />
+            </div>
+
+            <div className="link-to">
+              Powered by
+              <a href="https://www.hieuduongit.com/" target='_blank'> HieuduongIT.com</a>
+            </div>
+          </div>
+          <div className="notifications">
+            {currentErrorMessages ?
+              <Alert
+                key={currentErrorMessages.id}
+                banner
+                closable
+                message={currentErrorMessages.content}
+                type='error'
+                onClose={() => handleCloseErrorMessage(currentErrorMessages.id)}
+              />
+              :
+              <></>
+            }
+          </div>
+          <Tooltip placement="left" title={"Click to expand"} arrow>
+            <Popover
+              content={
+                <div className='list-errors'>
+                  {
+                    errorMessages.map(ms => {
+                      return (
+                        <Alert
+                          key={ms.id}
+                          banner
+                          closable
+                          message={ms.content}
+                          type='error'
+                          onClose={() => handleCloseErrorMessage(ms.id)}
+                        />
+                      )
+                    })
+                  }
+                </div>
+
+              }
+              title={
+                <a onClick={() => {
+                  setErrorMessages([]);
+                  setExpandErrMessage(false);
+                  setCurrentErrorMessages(undefined);
+                }}>
+                  Dismiss All
+                </a>
+              }
+              trigger="click"
+              open={expandErrMessage}
+              onOpenChange={(value) => {
+                setExpandErrMessage(value);
+              }}
+            >
+              <Badge count={errorMessages.length} size='default' style={{ cursor: "pointer" }} />
+            </Popover>
+
+          </Tooltip>
+
           {
             user ? <div className='profile'>
               <Popover placement="bottomLeft" title={""} content={
@@ -339,7 +442,11 @@ const App: FC = () => {
                 </Avatar>
               </Popover>
 
-            </div> : <></>
+            </div>
+              :
+              <div className='profile'>
+                <Avatar src={<img src="favicon.png" style={{ width: "100%", height: "100%" }} />} size={50} style={{ verticalAlign: 'middle' }} />
+              </div>
           }
 
         </div>
@@ -371,7 +478,8 @@ const App: FC = () => {
               newGame,
               setNewGame,
               watchMode,
-              setWatchMode
+              setWatchMode,
+              addNewErrorMessage
             }}>
               {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
               {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
@@ -380,10 +488,10 @@ const App: FC = () => {
         }
 
         {
-          messageQueue.length ?
+          conversations.length ?
             <div className="message-queue">
               {
-                messageQueue.map((mq, idx) => (
+                conversations.map((c, idx) => (
                   <div className="message-card">
                     <div className="title">
                       <div className='from-user'>
@@ -391,10 +499,10 @@ const App: FC = () => {
                           type="primary"
                           shape="circle"
                           size='small'
-                          icon={mq.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
+                          icon={c.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
                           onClick={() => handleHideMesssge(idx)}
                         />
-                        From: {mq.fromUser}
+                        From: {c.users.find(u => u.id !== user?.id)?.userName}
                       </div>
                       <div className="close-message-action">
                         <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
@@ -402,11 +510,11 @@ const App: FC = () => {
                         />
                       </div>
                     </div>
-                    <div className={mq.open ? "card-body" : "card-body close"}>
+                    <div className={c.open ? "card-body" : "card-body close"}>
                       <div className="content">
                         <div className="messages">
                           {
-                            mq.messages.map(ms => (
+                            c.messages.map(ms => (
                               <Collapse
                                 className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
                                 items={[{
@@ -416,7 +524,7 @@ const App: FC = () => {
                                 }]}
                                 expandIcon={() =>
                                   <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                    {user?.userName}
+                                    {c.users.find(u => u.id === ms.userId)?.userName}
                                   </Avatar>
                                 }
                                 size="small"
@@ -433,7 +541,7 @@ const App: FC = () => {
                           enterButton={<SendOutlined />}
                           size="middle"
 
-                          onSearch={(value: string) => handleSendMessage(mq, value, idx)}
+                          onSearch={(value: string) => handleSendMessage(c, value, idx)}
                           autoFocus
                         />
                       </div>

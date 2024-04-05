@@ -23,7 +23,7 @@ const playerIcons = [
 ]
 
 const GameGrid: FC<GameGridProps> = (props) => {
-    const { connection, matchInfo, user, listCoordinates, setListCoordinates, yourTurn, setYourTurn, start, newGame, watchMode } = useContext(AppContext);
+    const { connection, matchInfo, user, listCoordinates, setListCoordinates, yourTurn, setYourTurn, start, newGame, watchMode, addNewErrorMessage } = useContext(AppContext);
     const { initialPlayer } = props;
     const [player, setPlayer] = useState<Player>();
     const [isWinner, setIsWinner] = useState<boolean>();
@@ -100,6 +100,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
         if (listCoordinates.isSuccess) {
             setListCoordinates(listCoordinates.responseData);
             initGameBoard(listCoordinates.responseData);
+        } else {
+            addNewErrorMessage(listCoordinates.errorMessage);
         }
     }
 
@@ -170,6 +172,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
         if (res && res.isSuccess) {
             updateGameBoard(res.responseData.x, res.responseData.y, res.responseData.userId, res.responseData.player, res.responseData.id, res.responseData.current, res.responseData.winPoint);
             setYourTurn(false);
+        } else {
+            addNewErrorMessage(res.errorMessage);
         }
         const winner = checkWinner(gameBoard, x, y, user.id);
         if (winner.winner) {
@@ -187,8 +191,13 @@ const GameGrid: FC<GameGridProps> = (props) => {
                 winner.listCoordinates.forEach(lc => {
                     updateGameBoard(lc.x, lc.y, user.id, player, lc.id, false, true);
                 });
+                const result = await finishGame(matchInfo);
+                if(!result.isSuccess) {
+                    addNewErrorMessage(result.errorMessage);
+                }
+            } else {
+                addNewErrorMessage(winPointUpdateing.errorMessage);
             }
-            await finishGame(matchInfo);
         }
     }
 

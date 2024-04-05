@@ -48,7 +48,7 @@
     animation: blink-cell-hover 1.8s infinite;
 }
 
-.current {
+.game-table td.current {
     animation: blink-warning 1.2s infinite;
 }
 

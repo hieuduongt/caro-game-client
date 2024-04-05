@@ -4,6 +4,11 @@ export interface LoginDTO {
     password: string;
 }
 
+export interface ErrorMessage {
+    id: string;
+    content: string;
+}
+
 export interface RegisterDTO {
     username: string;
     email: string;
@@ -82,25 +87,25 @@ export interface Message {
     createdDate?: Date;
 }
 
-export interface MessageQueue {
-    ref?: React.MutableRefObject<any>
+export interface Conversation {
+    id: string;
     open: boolean;
-    fromUser: string;
-    fromUserId: string;
+    users: UserDTO[];
+    fromUserId?: string;
+    toUserId?: string;
     messages: Message[];
 }
 
 export interface MessageDto {
     id?: string;
     content: string;
-    fromUserId?: string;
+    userId?: string;
     toUserId?: string;
-    fromUser?: UserDTO;
-    toUser?: UserDTO;
-    room?: RoomDTO;
-    toRoomId?: string;
+    roomId?: string;
     updatedDate?: Date;
     createdDate?: Date;
+    conversationId?: string;
+    conversation?: Conversation;
 }
 
 export interface MatchDTO {

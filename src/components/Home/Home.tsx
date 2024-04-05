@@ -1,9 +1,11 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useContext, useEffect, useState } from "react";
 import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
 import { login, register } from "../../services/AuthServices";
 import { setAuthToken } from "../../helpers/Helper";
+import { AppContext } from "../../helpers/Context";
+import { SystemString } from "../../common/StringHelper";
 
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
@@ -11,6 +13,7 @@ interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Home: FC<HomeProps> = (props) => {
+    const { addNewErrorMessage } = useContext(AppContext);
     const { redirectToLogin, connectToGameHub } = props;
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
@@ -47,10 +50,12 @@ const Home: FC<HomeProps> = (props) => {
                             placement: "top"
                         })
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setLoggingIn(false);
                 }
             })
             .catch((info) => {
+                addNewErrorMessage(SystemString.ValidationError);
                 setLoggingIn(false);
             });
     }
@@ -77,14 +82,26 @@ const Home: FC<HomeProps> = (props) => {
                             description: it,
                             duration: -1,
                             placement: "top"
-                        })
+                        });
                     }
+                    addNewErrorMessage(result.errorMessage);
                     setRegistering(false);
                 }
             })
             .catch((info) => {
+                console.log(info)
+                addNewErrorMessage(SystemString.ValidationError);
                 setRegistering(false);
             });
+    }
+
+    const playAsGuest = () => {
+        api.info({
+            message: 'Not Support Features',
+            description: "This feature is under developed and not release yet, so to play, please register the account and login into system to play with other players!",
+            duration: -1,
+            placement: "top"
+        });
     }
 
     return (
@@ -98,7 +115,7 @@ const Home: FC<HomeProps> = (props) => {
                     <Button type="default" icon={<UserAddOutlined />} size={"large"} onClick={() => setOpenRegisterForm(true)}>
                         Register
                     </Button>
-                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => { }}>
+                    <Button type="dashed" icon={<RobotOutlined />} size={"large"} onClick={() => playAsGuest()}>
                         Play as guest
                     </Button>
                 </Flex>
