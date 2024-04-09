@@ -331,7 +331,9 @@ const App: FC = () => {
   }
 
   const handleCloseErrorMessage = (id: string) => {
+    console.log(id)
     const filteredNotifications = [...notifications].filter(p => p.id !== id);
+    console.log(filteredNotifications)
     setNotifications(filteredNotifications);
     setCurrentNotification(filteredNotifications[filteredNotifications.length - 1]);
     if (!filteredNotifications.length) setOpenNotificationPanel(false);
@@ -350,13 +352,14 @@ const App: FC = () => {
       setNotifications(prev => [...prev, ...notificationMessages]);
       setCurrentNotification(notificationMessages[notificationMessages.length - 1]);
     } else {
+      const notiId = uuidv4();
       setNotifications(prev => [...prev, {
-        id: uuidv4(),
+        id: notiId,
         content: content,
         type: type
       }]);
       setCurrentNotification({
-        id: uuidv4(),
+        id: notiId,
         content: content,
         type: type
       });
