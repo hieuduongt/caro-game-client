@@ -11,7 +11,7 @@ interface InGameProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const InGame: FC<InGameProps> = (props) => {
-  const { user, roomInfo, setStart, setMatchInfo, setWatchMode, setListCoordinates, setYourTurn, addNewErrorMessage } = useContext(AppContext);
+  const { user, roomInfo, setStart, setMatchInfo, setWatchMode, setListCoordinates, setYourTurn, addNewNotifications } = useContext(AppContext);
   useEffect(() => {
     if (roomInfo?.matchs?.length > 0) {
       getCurrentMatchInfo();
@@ -23,7 +23,7 @@ const InGame: FC<InGameProps> = (props) => {
     if (match.isSuccess) {
       setMatchInfo(match.responseData);
     } else {
-      addNewErrorMessage(match.errorMessage);
+      addNewNotifications(match.errorMessage, "error");
     }
     const listCoordinates = await getListCoordinates(roomInfo?.matchs[0].matchId);
       if (listCoordinates.isSuccess) {
@@ -48,7 +48,7 @@ const InGame: FC<InGameProps> = (props) => {
           setWatchMode(true);
         }
       } else {
-        addNewErrorMessage(listCoordinates.errorMessage);
+        addNewNotifications(listCoordinates.errorMessage, "error");
       }
   }
   return (

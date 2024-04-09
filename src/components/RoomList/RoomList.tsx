@@ -27,7 +27,7 @@ const CustomRow: FC<any> = (props) => {
 const RoomList: FC<RoomListProps> = (props) => {
     const { handleWhenClickOnChatButton } = props;
     const [roomCreationForm] = Form.useForm<RoomDTO>();
-    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep, addNewErrorMessage } = useContext(AppContext);
+    const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep, addNewNotifications } = useContext(AppContext);
     const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
     const [roomSearchKeywords, setRoomSearchKeywords] = useState<string>("");
     const [listUsers, setListUsers] = useState<Pagination<UserDTO>>();
@@ -176,13 +176,13 @@ const RoomList: FC<RoomListProps> = (props) => {
         if (res.isSuccess === true) {
             setListRooms(res.responseData);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
             setRedirectToLogin(true);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
         setRoomReloadState(false);
     }
@@ -193,7 +193,7 @@ const RoomList: FC<RoomListProps> = (props) => {
         if (res.isSuccess === true) {
             setListUsers(res.responseData);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
         if (res.isSuccess === false && res.code === 401) {
             setStep(1);
@@ -247,12 +247,12 @@ const RoomList: FC<RoomListProps> = (props) => {
                             placement: "top"
                         })
                     }
-                    addNewErrorMessage(result.errorMessage);
+                    addNewNotifications(result.errorMessage, "error");
                     setIsCreating(false);
                 }
             })
             .catch((info) => {
-                addNewErrorMessage(SystemString.ValidationError);
+                addNewNotifications(SystemString.ValidationError, "error");
                 setIsCreating(false);
             });
     }
@@ -269,10 +269,10 @@ const RoomList: FC<RoomListProps> = (props) => {
                 setUser(newUser);
                 setStep(3);
             } else {
-                addNewErrorMessage(currentRoomRes.errorMessage);
+                addNewNotifications(currentRoomRes.errorMessage, "error");
             }
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 

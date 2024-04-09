@@ -13,7 +13,7 @@ interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Home: FC<HomeProps> = (props) => {
-    const { addNewErrorMessage } = useContext(AppContext);
+    const { addNewNotifications } = useContext(AppContext);
     const { redirectToLogin, connectToGameHub } = props;
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
@@ -50,12 +50,12 @@ const Home: FC<HomeProps> = (props) => {
                             placement: "top"
                         })
                     }
-                    addNewErrorMessage(result.errorMessage);
+                    addNewNotifications(result.errorMessage, "error");
                     setLoggingIn(false);
                 }
             })
             .catch((info) => {
-                addNewErrorMessage(SystemString.ValidationError);
+                addNewNotifications(SystemString.ValidationError, "error");
                 setLoggingIn(false);
             });
     }
@@ -84,13 +84,13 @@ const Home: FC<HomeProps> = (props) => {
                             placement: "top"
                         });
                     }
-                    addNewErrorMessage(result.errorMessage);
+                    addNewNotifications(result.errorMessage, "error");
                     setRegistering(false);
                 }
             })
             .catch((info) => {
                 console.log(info)
-                addNewErrorMessage(SystemString.ValidationError);
+                addNewNotifications(SystemString.ValidationError, "error");
                 setRegistering(false);
             });
     }

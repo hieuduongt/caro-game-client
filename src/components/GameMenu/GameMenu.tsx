@@ -17,7 +17,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewErrorMessage } = useContext(AppContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewNotifications } = useContext(AppContext);
     const [messages, setMessages] = useState<Message[]>();
     const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
@@ -36,7 +36,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 setSitted(false);
             }
         } else {
-            addNewErrorMessage(currentRoom.errorMessage);
+            addNewNotifications(currentRoom.errorMessage, "error");
         }
     }
 
@@ -45,7 +45,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         if (res.isSuccess) {
             setUser(res.responseData);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 
@@ -168,7 +168,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         });
         const result = await finishGame(match);
         if (!result.isSuccess) {
-            addNewErrorMessage(result.errorMessage);
+            addNewNotifications(result.errorMessage, "error");
         }
         await getRoomInfo();
         setStart(false);
@@ -195,7 +195,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 duration: 3,
                 placement: "top"
             });
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 
@@ -208,7 +208,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             await getUserInfo();
             setSitted(true);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 
@@ -228,7 +228,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             }
             setSitted(false);
         } else {
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 
@@ -254,7 +254,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 duration: 3,
                 placement: "top"
             });
-            addNewErrorMessage(res.errorMessage);
+            addNewNotifications(res.errorMessage, "error");
         }
     }
 
