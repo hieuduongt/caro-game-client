@@ -350,13 +350,14 @@ const App: FC = () => {
       setNotifications(prev => [...prev, ...notificationMessages]);
       setCurrentNotification(notificationMessages[notificationMessages.length - 1]);
     } else {
+      const notiId = uuidv4();
       setNotifications(prev => [...prev, {
-        id: uuidv4(),
+        id: notiId,
         content: content,
         type: type
       }]);
       setCurrentNotification({
-        id: uuidv4(),
+        id: notiId,
         content: content,
         type: type
       });
