@@ -331,9 +331,7 @@ const App: FC = () => {
   }
 
   const handleCloseErrorMessage = (id: string) => {
-    console.log(id)
     const filteredNotifications = [...notifications].filter(p => p.id !== id);
-    console.log(filteredNotifications)
     setNotifications(filteredNotifications);
     setCurrentNotification(filteredNotifications[filteredNotifications.length - 1]);
     if (!filteredNotifications.length) setOpenNotificationPanel(false);
