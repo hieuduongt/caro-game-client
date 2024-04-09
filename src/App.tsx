@@ -1,8 +1,8 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Tooltip, Badge } from 'antd';
-import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
+import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Space, Badge, Drawer } from 'antd';
+import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined, AlertOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
@@ -10,7 +10,7 @@ import Home from './components/Home/Home';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, Message, MessageDto, Conversation, RoomDTO, UserDTO, ErrorMessage } from './models/Models';
+import { Coordinates, MatchDTO, Message, MessageDto, Conversation, RoomDTO, UserDTO, NotificationMessage } from './models/Models';
 import { createConversation, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
 const { Search } = Input;
@@ -34,9 +34,9 @@ const App: FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
   const messageRefs = useRef<Array<HTMLDivElement>>([]);
-  const [errorMessages, setErrorMessages] = useState<ErrorMessage[]>([]);
-  const [currentErrorMessages, setCurrentErrorMessages] = useState<ErrorMessage>();
-  const [expandErrMessage, setExpandErrMessage] = useState<boolean>(false);
+  const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
+  const [currentNotification, setCurrentNotification] = useState<NotificationMessage>();
+  const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -78,7 +78,7 @@ const App: FC = () => {
         duration: -1,
         placement: "top"
       });
-      addNewErrorMessage(SystemString.CannotConnectToServer);
+      addNewNotifications(SystemString.CannotConnectToServer, "error");
       setLoading(false);
     });
   }
@@ -109,7 +109,7 @@ const App: FC = () => {
       setUser(currentUser);
       return res.responseData.roomId ? true : false;
     } else {
-      addNewErrorMessage(res.errorMessage);
+      addNewNotifications(res.errorMessage, "error");
       return false;
     }
   }
@@ -331,31 +331,34 @@ const App: FC = () => {
   }
 
   const handleCloseErrorMessage = (id: string) => {
-    const filteredErrorMessages = [...errorMessages].filter(p => p.id !== id);
-    setErrorMessages(filteredErrorMessages);
-    setCurrentErrorMessages(filteredErrorMessages[filteredErrorMessages.length - 1]);
-    if (!filteredErrorMessages.length) setExpandErrMessage(false);
+    const filteredNotifications = [...notifications].filter(p => p.id !== id);
+    setNotifications(filteredNotifications);
+    setCurrentNotification(filteredNotifications[filteredNotifications.length - 1]);
+    if (!filteredNotifications.length) setOpenNotificationPanel(false);
   }
 
-  const addNewErrorMessage = (content: string | string[]) => {
+  const addNewNotifications = (content: string | string[], type: "success" | "info" | "warning" | "error") => {
     if (Array.isArray(content)) {
-      const messages = content.map(c => {
-        const mess: ErrorMessage = {
+      const notificationMessages = content.map(c => {
+        const mess: NotificationMessage = {
           id: uuidv4(),
-          content: c
+          content: c,
+          type: type
         };
         return mess;
       });
-      setErrorMessages(prev => [...prev, ...messages]);
-      setCurrentErrorMessages(messages[messages.length - 1]);
+      setNotifications(prev => [...prev, ...notificationMessages]);
+      setCurrentNotification(notificationMessages[notificationMessages.length - 1]);
     } else {
-      setErrorMessages(prev => [...prev, {
+      setNotifications(prev => [...prev, {
         id: uuidv4(),
-        content: content
+        content: content,
+        type: type
       }]);
-      setCurrentErrorMessages({
+      setCurrentNotification({
         id: uuidv4(),
-        content: content
+        content: content,
+        type: type
       });
     }
   }
@@ -366,7 +369,7 @@ const App: FC = () => {
         <div className="header">
           <div className="author">
             <div>
-              <Avatar src={<img src="app-logo.PNG" style={{ width: "100%", height: "100%" }} />} style={{ verticalAlign: 'middle', boxShadow: "rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }} size={50} />
+              <Avatar src={<img src="app-logo.PNG" style={{ width: "100%", height: "100%" }} />} style={{ verticalAlign: 'middle', boxShadow: "rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }} size={40} />
             </div>
 
             <div className="link-to">
@@ -375,60 +378,58 @@ const App: FC = () => {
             </div>
           </div>
           <div className="notifications">
-            {currentErrorMessages ?
+            {currentNotification ?
               <Alert
-                key={currentErrorMessages.id}
+                key={currentNotification.id}
                 banner
                 closable
-                message={currentErrorMessages.content}
-                type='error'
-                onClose={() => handleCloseErrorMessage(currentErrorMessages.id)}
+                message={currentNotification.content}
+                type={currentNotification.type}
+                onClose={() => handleCloseErrorMessage(currentNotification.id)}
               />
               :
               <></>
             }
           </div>
-          <Tooltip placement="left" title={"Click to expand"} arrow>
-            <Popover
-              content={
-                <div className='list-errors'>
-                  {
-                    errorMessages.map(ms => {
-                      return (
-                        <Alert
-                          key={ms.id}
-                          banner
-                          closable
-                          message={ms.content}
-                          type='error'
-                          onClose={() => handleCloseErrorMessage(ms.id)}
-                        />
-                      )
-                    })
-                  }
-                </div>
 
-              }
-              title={
-                <a onClick={() => {
-                  setErrorMessages([]);
-                  setExpandErrMessage(false);
-                  setCurrentErrorMessages(undefined);
+          <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
+            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(true)}/>
+          </Badge>
+          <Drawer
+            title="Notifications"
+            placement="right"
+            width={500}
+            onClose={() => setOpenNotificationPanel(false)}
+            open={openNotificationPanel}
+            extra={
+              <Space>
+                <Button type="link" onClick={() => {
+                  setNotifications([]);
+                  setOpenNotificationPanel(false);
+                  setCurrentNotification(undefined);
                 }}>
                   Dismiss All
-                </a>
+                </Button>
+              </Space>
+            }
+          >
+            <div className='list-errors'>
+              {
+                notifications.map(nt => {
+                  return (
+                    <Alert
+                      key={nt.id}
+                      banner
+                      closable
+                      message={nt.content}
+                      type={nt.type}
+                      onClose={() => handleCloseErrorMessage(nt.id)}
+                    />
+                  )
+                })
               }
-              trigger="click"
-              open={expandErrMessage}
-              onOpenChange={(value) => {
-                setExpandErrMessage(value);
-              }}
-            >
-              <Badge count={errorMessages.length} size='default' style={{ cursor: "pointer" }} />
-            </Popover>
-
-          </Tooltip>
-
+            </div>
+          </Drawer>
           {
             user ? <div className='profile'>
               <Popover placement="bottomLeft" title={""} content={
@@ -442,7 +443,7 @@ const App: FC = () => {
                   <Button type="dashed" onClick={logOut}>Log out</Button>
                 </div>
               } trigger="click">
-                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={50} gap={2}>
+                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer", backgroundColor: "#87d068" }} className='user-profile' size={40} gap={2}>
                   {generateShortUserName(user.userName)}
                 </Avatar>
               </Popover>
@@ -450,7 +451,7 @@ const App: FC = () => {
             </div>
               :
               <div className='profile'>
-                <Avatar src={<img src="favicon.png" style={{ width: "100%", height: "100%" }} />} size={50} style={{ verticalAlign: 'middle' }} />
+                <Avatar src={<img src="favicon.png" style={{ width: "100%", height: "100%" }} />} size={40} style={{ verticalAlign: 'middle' }} />
               </div>
           }
 
@@ -484,7 +485,7 @@ const App: FC = () => {
               setNewGame,
               watchMode,
               setWatchMode,
-              addNewErrorMessage
+              addNewNotifications
             }}>
               {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
               {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}

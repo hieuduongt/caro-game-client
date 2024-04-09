@@ -4,9 +4,10 @@ export interface LoginDTO {
     password: string;
 }
 
-export interface ErrorMessage {
+export interface NotificationMessage {
     id: string;
     content: string;
+    type: "success" | "info" | "warning" | "error";
 }
 
 export interface RegisterDTO {
