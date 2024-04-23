@@ -260,3 +260,23 @@
   height: 100%;
   width: 100%;
 }
+
+.list-conversations {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.ant-drawer-content-wrapper:has(>.conversations) {
+  margin: 40px;
+  box-shadow: none;
+}
+
+.ant-drawer-content-wrapper>.conversations>.ant-drawer-wrapper-body>.ant-drawer-body{
+  padding: 5px;
+}
+
+#scrollableDiv {
+  border: none !important;
+  height: 100% !important;
+}

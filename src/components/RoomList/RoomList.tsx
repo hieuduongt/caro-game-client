@@ -1,7 +1,7 @@
-import React, { FC, forwardRef, useContext, useEffect, useRef, useState } from "react";
+import React, { FC, useContext, useEffect, useRef, useState } from "react";
 import './RoomList.css';
 import { Modal, Form, Button, Input, notification, Table, Tag, Tooltip, Avatar } from 'antd';
-import { UserOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
+import { UserOutlined, MessageTwoTone, PlusOutlined } from '@ant-design/icons';
 import { RoomDTO, UserDTO, Pagination, Status, Roles, RoleDTO } from "../../models/Models";
 import { createRoom, getAllRooms, getRoom, joinRoom } from "../../services/RoomServices";
 import { AppContext } from "../../helpers/Context";
@@ -122,7 +122,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 })
                 return (
                     data.map(d => (
-                        <Tag color={d?.color}>{d?.value}</Tag>
+                        <Tag color={d?.color}>{d?.value.toUpperCase()}</Tag>
                     )) 
                 )
             }
@@ -162,10 +162,10 @@ const RoomList: FC<RoomListProps> = (props) => {
             }
         },
         {
-            title: 'Action',
+            title: 'Chat',
             key: 'action',
             render: (_, record: UserDTO) => (
-                <Button icon={<SendOutlined />} onClick={() => handleWhenClickOnChatButton(record)} type="text">Chat</Button>
+                <Button icon={<MessageTwoTone twoToneColor="#eb2f96"/>} onClick={() => handleWhenClickOnChatButton(record)} type="text" shape="circle"></Button>
             )
         },
     ];

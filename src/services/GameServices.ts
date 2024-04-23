@@ -7,19 +7,9 @@ export const startGame = async (data: RoomDTO) : Promise<ResponseData<MatchDTO>>
     return post<MatchDTO>(url, data);
 }
 
-export const finishGame = async (data: MatchDTO) : Promise<ResponseData<undefined>> => {
-    const url = `${EnvEnpoint()}/api/Game/finish-match`;
-    return post<undefined>(url, data);
-}
-
 export const move = async (data: GameDTO) : Promise<ResponseData<Coordinates>> => {
     const url = `${EnvEnpoint()}/api/Game/move`;
     return post<Coordinates>(url, data);
-}
-
-export const updateWinPoints = async (data: Coordinates[]) : Promise<ResponseData<undefined>> => {
-    const url = `${EnvEnpoint()}/api/Game/update-win-point`;
-    return post<undefined>(url, data);
 }
 
 export const getCurrentMatchByUserId = async (userId: string) : Promise<ResponseData<MatchDTO>> => {
