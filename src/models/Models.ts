@@ -77,24 +77,13 @@ export interface RoleDTO {
     name: string;
 }
 
-export interface Message {
-    id?: string;
-    userId: string;
-    userName: string;
-    message: string;
-    isMyMessage: boolean;
-    isNewMessage: boolean;
-    updatedDate?: Date;
-    createdDate?: Date;
-}
-
-export interface Conversation {
+export interface ConversationDTO {
     id: string;
     open: boolean;
     users: UserDTO[];
     fromUserId?: string;
     toUserId?: string;
-    messages: Message[];
+    messages: MessageDto[];
 }
 
 export interface MessageDto {
@@ -106,7 +95,9 @@ export interface MessageDto {
     updatedDate?: Date;
     createdDate?: Date;
     conversationId?: string;
-    conversation?: Conversation;
+    conversation?: ConversationDTO;
+    isMyMessage: boolean;
+    isNewMessage?: boolean;
 }
 
 export interface MatchDTO {

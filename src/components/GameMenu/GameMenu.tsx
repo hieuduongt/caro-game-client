@@ -6,10 +6,10 @@ import { AiOutlineSend } from "react-icons/ai";
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { AppContext } from '../../helpers/Context';
-import { MatchDTO, Message, UserDTO } from '../../models/Models';
+import { MatchDTO, MessageDto, UserDTO } from '../../models/Models';
 import { getRoomOfCurrentUser, leaveRoom, sit, leaveTheSit } from '../../services/RoomServices';
 import { getUser } from '../../services/UserServices';
-import { finishGame, startGame } from '../../services/GameServices';
+import { startGame } from '../../services/GameServices';
 import Time from '../Time/Time';
 
 interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -18,7 +18,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const GameMenu: FC<GameMenuProps> = (props) => {
     const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewNotifications } = useContext(AppContext);
-    const [messages, setMessages] = useState<Message[]>();
+    const [messages, setMessages] = useState<MessageDto[]>();
     const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
     const [competitorTime, setCompetitorTime] = useState<number>(0);
@@ -51,12 +51,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
 
     const addGroupMessage = (message: string, userName?: string) => {
         setMessages((prev) => {
-            const newMess: Message[] = prev && prev?.length ? [...prev] : [];
-            const mess: Message = {
+            const newMess: MessageDto[] = prev && prev?.length ? [...prev] : [];
+            const mess: MessageDto = {
                 userId: user.id,
-                userName: userName || "",
                 isMyMessage: false,
-                message: message,
+                content: message,
                 isNewMessage: true
             }
             newMess.push(mess);
@@ -166,10 +165,6 @@ const GameMenu: FC<GameMenuProps> = (props) => {
             }
             delete u.time;
         });
-        const result = await finishGame(match);
-        if (!result.isSuccess) {
-            addNewNotifications(result.errorMessage, "error");
-        }
         await getRoomInfo();
         setStart(false);
     }
@@ -329,7 +324,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         {
                             messages?.map((mess, i) => (
                                 <div id={mess.userId + "-mess-" + i} className={mess.isMyMessage ? "my-message" : "message"}>
-                                    <b>{mess.userName} </b>{mess.message}
+                                    <b>{""} </b>{mess.content}
                                 </div>
                             ))
                         }

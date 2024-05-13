@@ -1,5 +1,5 @@
 import { EnvEnpoint } from "../helpers/Helper";
-import { Conversation, MessageDto, Pagination, ResponseData } from "../models/Models";
+import { ConversationDTO, MessageDto, Pagination, ResponseData } from "../models/Models";
 import { get, post } from "./ApiCreator";
 
 export const getAllMessages = async () : Promise<ResponseData<Pagination<MessageDto>>> => {
@@ -7,19 +7,24 @@ export const getAllMessages = async () : Promise<ResponseData<Pagination<Message
     return get<Pagination<MessageDto>>(url);
 }
 
-export const createConversation = async (toUserId: string) : Promise<ResponseData<Conversation>> => {
+export const createConversation = async (toUserId: string) : Promise<ResponseData<ConversationDTO>> => {
     const url = `${EnvEnpoint()}/api/Chat/conversation/${toUserId}`;
-    return post<Conversation>(url);
+    return post<ConversationDTO>(url);
 }
 
-export const getConversation = async (toUserId: string) : Promise<ResponseData<Conversation>> => {
+export const getConversation = async (toUserId: string) : Promise<ResponseData<ConversationDTO>> => {
     const url = `${EnvEnpoint()}/api/Chat/conversation/${toUserId}`;
-    return get<Conversation>(url);
+    return get<ConversationDTO>(url);
 }
 
-export const getMessage = async (conversationId: string) : Promise<ResponseData<MessageDto[]>> => {
+export const getAllConversations = async () : Promise<ResponseData<Pagination<ConversationDTO>>> => {
+    const url = `${EnvEnpoint()}/api/Chat/conversations`;
+    return get<Pagination<ConversationDTO>>(url);
+}
+
+export const getMessage = async (conversationId: string) : Promise<ResponseData<Pagination<MessageDto>>> => {
     const url = `${EnvEnpoint()}/api/Chat/conversation/user/messages/${conversationId}`;
-    return get<MessageDto[]>(url);
+    return get<Pagination<MessageDto>>(url);
 }
 
 export const getMessageOfRoom = async (roomId: string) : Promise<ResponseData<MessageDto>> => {

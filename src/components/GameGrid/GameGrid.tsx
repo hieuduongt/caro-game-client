@@ -1,11 +1,10 @@
 import React, { FC, useContext, useEffect, useState } from 'react';
 import './GameGrid.css';
 import { AppContext } from '../../helpers/Context';
-import { checkWinner } from '../../helpers/Helper';
 import { FaRegCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { Coordinates, GameDTO, MatchDTO, Player, UserInMatches } from '../../models/Models';
-import { finishGame, getListCoordinates, move, updateWinPoints } from '../../services/GameServices';
+import { getListCoordinates, move } from '../../services/GameServices';
 
 interface GameGridProps extends React.HTMLAttributes<HTMLDivElement> {
     initialPlayer: Player;
@@ -174,30 +173,6 @@ const GameGrid: FC<GameGridProps> = (props) => {
             setYourTurn(false);
         } else {
             addNewNotifications(res.errorMessage, "error");
-        }
-        const winner = checkWinner(gameBoard, x, y, user.id);
-        if (winner.winner) {
-            matchInfo.userInMatches.forEach((u: UserInMatches) => {
-                if (u.id === user.id) {
-                    u.isWinner = true;
-                } else {
-                    u.isWinner = false;
-                }
-                delete u.time;
-            });
-
-            const winPointUpdateing = await updateWinPoints(winner.listCoordinates);
-            if (winPointUpdateing.isSuccess) {
-                winner.listCoordinates.forEach(lc => {
-                    updateGameBoard(lc.x, lc.y, user.id, player, lc.id, false, true);
-                });
-                const result = await finishGame(matchInfo);
-                if(!result.isSuccess) {
-                    addNewNotifications(result.errorMessage, "error");
-                }
-            } else {
-                addNewNotifications(winPointUpdateing.errorMessage, "error");
-            }
         }
     }
 

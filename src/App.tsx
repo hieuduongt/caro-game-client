@@ -2,16 +2,17 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
 import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Space, Badge, Drawer } from 'antd';
-import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined, AlertOutlined } from '@ant-design/icons';
+import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
+import Conversation from './components/Conversation/Conversation';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, Message, MessageDto, Conversation, RoomDTO, UserDTO, NotificationMessage } from './models/Models';
-import { createConversation, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
+import { Coordinates, MatchDTO, MessageDto, RoomDTO, ConversationDTO, UserDTO, NotificationMessage } from './models/Models';
+import { createConversation, getConversation, getMessage, sendMessageToUser, getAllConversations } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
 const { Search } = Input;
 
@@ -31,12 +32,14 @@ const App: FC = () => {
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ConversationDTO[]>([]);
   const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
   const messageRefs = useRef<Array<HTMLDivElement>>([]);
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [currentNotification, setCurrentNotification] = useState<NotificationMessage>();
   const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
+  const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
+
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -149,6 +152,7 @@ const App: FC = () => {
         setNewReceivedMessage(data);
       });
     }
+
   }, [connection]);
 
   useEffect(() => {
@@ -168,34 +172,32 @@ const App: FC = () => {
   const handleWhenReceivingMessages = async (data: MessageDto) => {
     let newConversations = [...conversations];
     let idx: number = -1;
-    const newMessage: Message = {
+    const newMessage: MessageDto = {
       isMyMessage: false,
-      message: data.content,
+      content: data.content,
       userId: data.userId || "",
-      userName: "",
       isNewMessage: true,
       createdDate: data.createdDate,
       updatedDate: data.updatedDate
     }
-    const currentConversation = newConversations.some((c: Conversation) => c.id === data.conversationId);
+    const currentConversation = newConversations.some((c: ConversationDTO) => c.id === data.conversationId);
     if (!currentConversation) {
-      let newConversation: Conversation;
+      let newConversation: ConversationDTO;
       const converRes = await getConversation(data.userId || "");
       if (converRes.isSuccess && converRes.responseData) {
         newConversation = converRes.responseData;
         newConversation.open = true;
         const messages = await getMessage(converRes.responseData.id);
-        if (messages.isSuccess && messages.responseData.length) {
-          newConversation.messages = messages.responseData.map(m => {
-            const newMessage: Message = {
+        if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
+          newConversation.messages = messages.responseData.items.map(m => {
+            const newMessage: MessageDto = {
               id: m.id,
-              message: m.content,
+              content: m.content,
               isMyMessage: m.userId === user?.id,
               createdDate: m.createdDate,
               updatedDate: m.updatedDate,
               isNewMessage: false,
-              userId: m.userId || "",
-              userName: newConversation.users.find(u => u.id === m.userId)?.userName || ""
+              userId: m.userId || ""
             }
             return newMessage;
           });
@@ -223,25 +225,24 @@ const App: FC = () => {
 
   const handleWhenClickOnChatButton = async (data: UserDTO) => {
     let newConversations = [...conversations];
-    const currentConversation = newConversations.some((c: Conversation) => c.users.find(u => u.id === data.id));
+    const currentConversation = newConversations.some((c: ConversationDTO) => c.users.find(u => u.id === data.id));
     if (!currentConversation) {
-      let newConversation: Conversation;
+      let newConversation: ConversationDTO;
       const res = await getConversation(data.id);
       if (res.isSuccess && res.responseData) {
         newConversation = res.responseData;
         newConversation.open = true;
         const messages = await getMessage(res.responseData.id);
-        if (messages.isSuccess && messages.responseData.length) {
-          newConversation.messages = messages.responseData.map(m => {
-            const newMessage: Message = {
+        if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
+          newConversation.messages = messages.responseData.items.map(m => {
+            const newMessage: MessageDto = {
               id: m.id,
-              message: m.content,
+              content: m.content,
               isMyMessage: m.userId === user?.id,
               createdDate: m.createdDate,
               updatedDate: m.updatedDate,
               isNewMessage: false,
-              userId: m.userId || "",
-              userName: newConversation.users.find(u => u.id === m.userId)?.userName || ""
+              userId: m.userId || ""
             }
             return newMessage;
           });
@@ -265,24 +266,24 @@ const App: FC = () => {
     setConversations(newConversations);
   }
 
-  const handleSendMessage = async (data: Conversation, value: string, idx: number) => {
+  const handleSendMessage = async (data: ConversationDTO, value: string, idx: number) => {
     if (!value) return;
     const newMessageDto: MessageDto = {
       conversationId: data.id,
       content: value,
       userId: user?.id,
-      toUserId: data.users.find(u => u.id !== user?.id)?.id
+      toUserId: data.users.find(u => u.id !== user?.id)?.id,
+      isMyMessage: true
     }
 
     const res = await sendMessageToUser(newMessageDto);
     if (res.isSuccess) {
 
       let newArr = [...conversations];
-      const newMessage: Message = {
+      const newMessage: MessageDto = {
         isMyMessage: true,
-        message: value,
+        content: value,
         userId: user?.id || "",
-        userName: user?.userName || "",
         isNewMessage: true,
         createdDate: new Date(),
         updatedDate: new Date()
@@ -394,43 +395,16 @@ const App: FC = () => {
           </div>
 
           <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
-            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(true)}/>
+            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(true)} />
           </Badge>
-          <Drawer
-            title="Notifications"
-            placement="right"
-            width={500}
-            onClose={() => setOpenNotificationPanel(false)}
-            open={openNotificationPanel}
-            extra={
-              <Space>
-                <Button type="link" onClick={() => {
-                  setNotifications([]);
-                  setOpenNotificationPanel(false);
-                  setCurrentNotification(undefined);
-                }}>
-                  Dismiss All
-                </Button>
-              </Space>
-            }
-          >
-            <div className='list-errors'>
-              {
-                notifications.map(nt => {
-                  return (
-                    <Alert
-                      key={nt.id}
-                      banner
-                      closable
-                      message={nt.content}
-                      type={nt.type}
-                      onClose={() => handleCloseErrorMessage(nt.id)}
-                    />
-                  )
-                })
-              }
-            </div>
-          </Drawer>
+          {user ?
+            <Badge count={1} size='small' style={{ cursor: "pointer" }} >
+              <Button type="default" shape="circle" size='small' icon={<MessageOutlined />} onClick={() => setOpenConversationPanel(true)} />
+            </Badge>
+            :
+            <></>
+          }
+
           {
             user ? <div className='profile'>
               <Popover placement="bottomLeft" title={""} content={
@@ -491,6 +465,20 @@ const App: FC = () => {
               {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
               {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
               {step === 3 ? <InGame /> : <></>}
+              <Drawer
+                title="Your Conversations"
+                placement="right"
+                width={350}
+                onClose={() => setOpenConversationPanel(false)}
+                open={openConversationPanel}
+                className='conversations'
+                style={{
+                  borderRadius: 20,
+                  // boxShadow: "0 0 40px 0 rgba(0,0,0,.45)"
+                }}
+              >
+                <Conversation />
+              </Drawer>
             </AppContext.Provider>
         }
 
@@ -526,7 +514,7 @@ const App: FC = () => {
                                 className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
                                 items={[{
                                   key: ms.id,
-                                  label: <span>{ms.message}</span>,
+                                  label: <span>{ms.content}</span>,
                                   children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
                                 }]}
                                 expandIcon={() =>
@@ -564,6 +552,41 @@ const App: FC = () => {
         }
 
       </div >
+      <Drawer
+        title="Notifications"
+        placement="top"
+        height={500}
+        onClose={() => setOpenNotificationPanel(false)}
+        open={openNotificationPanel}
+        extra={
+          <Space>
+            <Button type="link" onClick={() => {
+              setNotifications([]);
+              setOpenNotificationPanel(false);
+              setCurrentNotification(undefined);
+            }}>
+              Dismiss All
+            </Button>
+          </Space>
+        }
+      >
+        <div className='list-errors'>
+          {
+            notifications.map(nt => {
+              return (
+                <Alert
+                  key={nt.id}
+                  banner
+                  closable
+                  message={nt.content}
+                  type={nt.type}
+                  onClose={() => handleCloseErrorMessage(nt.id)}
+                />
+              )
+            })
+          }
+        </div>
+      </Drawer>
     </>
   );
 }
