@@ -60,7 +60,7 @@
   align-items: center;
 }
 
-.author > .link-to {
+.author>.link-to {
   font-family: "Raleway", sans-serif;
   font-optical-sizing: auto;
   font-weight: 800;
@@ -70,7 +70,7 @@
   font-size: 14px;
 }
 
-.link-to > a {
+.link-to>a {
   text-decoration: none;
   color: #1677ff;
 }
@@ -101,8 +101,6 @@
   --shadow-color: hsl(220deg 100% 55%);
   filter: drop-shadow(1px 2px 8px var(--shadow-color));
 }
-
-.profile {}
 
 .match-info {
   padding: 5px;
@@ -152,44 +150,55 @@
   float: right;
 }
 
+.have-message {
+  animation: blinkingBackground 1.5s ease-in-out infinite;
+}
+
+@keyframes blinkingBackground {
+  0% {
+    background-color: #1677ff;
+  }
+
+  50% {
+    background-color: #ff0000;
+  }
+
+  100% {
+    background-color: #1677ff;
+  }
+}
+
+.message-card {
+  transition: transform 0.3s ease-in-out;
+}
+
 .message-card>.card-body {
   background-color: rgb(255, 255, 255);
-  padding: 5px;
-  height: 307px;
+  height: 300px;
   transition: height 0.3s ease-in-out;
-}
-
-.message-card>.card-body.close,
-.message-card>.card-body.close>.content {
-  height: 0 !important;
-  min-height: 0 !important;
-  padding: 0;
-  transition: height 0.3s ease-in-out;
-}
-
-.message-card:has(>.card-body.close) {
-  min-height: 100% !important;
-}
-
-.card-body>.content {
   box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.45) inset;
-  margin-bottom: 5px;
-  padding: 5px;
   min-height: 200px;
   border-radius: 6.5px;
-  height: 260px;
-  width: 240px;
-  overflow-y: scroll;
-  overflow-x: hidden;
+  width: 250px;
+  margin: 5px;
 }
 
-.content>.messages {
+.message-card:has(.card-body.close) {
+  transform: translateY(347px);
+}
+
+.message-card>.send-action {
+  margin: 5px;
+}
+
+.messages {
   display: flex;
   flex-direction: column;
-  width: 100%;
   gap: 5px;
-  overflow-y: scroll;
-  overflow-x: hidden;
+  padding: 5px;
+  border-radius: 6.5px;
+  width: 240px !important;
+  height: 290px !important;
 }
 
 .messages>.incomming-message {
@@ -272,11 +281,57 @@
   box-shadow: none;
 }
 
-.ant-drawer-content-wrapper>.conversations>.ant-drawer-wrapper-body>.ant-drawer-body{
+.ant-drawer-content-wrapper>.conversations>.ant-drawer-wrapper-body>.ant-drawer-body {
   padding: 5px;
 }
 
 #scrollableDiv {
   border: none !important;
   height: 100% !important;
+}
+
+.conversation-li {
+  cursor: pointer;
+  align-items: center !important;
+  border-radius: 8px;
+  margin-top: 5px;
+  position: relative;
+}
+
+.conversation-item {
+  align-items: center !important;
+  position: relative;
+}
+
+.conversation-li:has(.unread) {
+  background-color: #deecff;
+}
+
+.conversation-li:hover {
+  cursor: pointer;
+  background-color: #ccc !important;
+}
+
+.conversation-item.unread .ant-list-item-meta-title,
+.conversation-item.unread .ant-list-item-meta-description {
+  font-weight: bolder;
+  color: black !important;
+}
+
+.conversation-item .ant-list-item-meta-title {
+  font-weight: 500;
+}
+
+.conversation-li>.badge {
+  position: absolute;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
+  display: none;
+}
+
+.conversation-li>.conversation-item.unread+.badge {
+  display: block;
 }

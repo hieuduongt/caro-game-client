@@ -1,5 +1,5 @@
 import { jwtDecode } from "jwt-decode";
-import { Coordinates } from "../models/Models";
+import { Coordinates, NotificationDto } from "../models/Models";
 
 interface ReturnResult {
     winner: string;
@@ -11,6 +11,10 @@ interface DecodedToken {
     role?: string | number | string[];
     name?: string | number | string[];
     nameidentifier?: string | number | string[];
+}
+
+const isNotificationDto = (item: any): item is NotificationDto => {
+    return 'conversation' in item;
 }
 
 const EnvEnpoint = (): string => {
@@ -210,4 +214,4 @@ const isExpired = (): boolean => {
     return false;
 }
 
-export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName, formatUTCDateToLocalDate }
+export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName, formatUTCDateToLocalDate, isNotificationDto }

@@ -11,6 +11,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { GiRoundTable } from "react-icons/gi";
 import { RiLoginCircleLine } from "react-icons/ri";
 import { SystemString } from "../../common/StringHelper";
+import { getUnReadNotifications } from "../../services/NotificationServices";
 const { Search } = Input;
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
     handleWhenClickOnChatButton: (data: UserDTO) => void;
@@ -123,7 +124,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 return (
                     data.map(d => (
                         <Tag color={d?.color}>{d?.value.toUpperCase()}</Tag>
-                    )) 
+                    ))
                 )
             }
         },
@@ -165,7 +166,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Chat',
             key: 'action',
             render: (_, record: UserDTO) => (
-                <Button icon={<MessageTwoTone twoToneColor="#eb2f96"/>} onClick={() => handleWhenClickOnChatButton(record)} type="text" shape="circle"></Button>
+                <Button icon={<MessageTwoTone twoToneColor="#eb2f96" />} onClick={() => handleWhenClickOnChatButton(record)} type="text" shape="circle"></Button>
             )
         },
     ];
@@ -202,10 +203,20 @@ const RoomList: FC<RoomListProps> = (props) => {
         setUserReloadState(false);
     }
 
+    const getAllUnreadNotifications = async (search: string, page: number, pageSize: number) => {
+        const res = await getUnReadNotifications(search, page, pageSize);
+        if (res.isSuccess && res.responseData && res.responseData.items) {
+            addNewNotifications(res.responseData.items, 'info');
+        } else {
+            addNewNotifications(res.errorMessage, 'error');
+        }
+    }
+
     useEffect(() => {
         if (cLoaded.current) return;
         getListRooms(roomSearchKeywords || "", 1, 20);
         getListUsers(userSearchKeywords || "", 1, 20);
+
         if (connection) {
             connection.on("GlobalRoomUpdating", async () => {
                 await getListRooms(roomSearchKeywords, 1, 20);
@@ -217,6 +228,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                 await getListUsers(userSearchKeywords, 1, 20);
             });
         }
+        getAllUnreadNotifications("", 1, 20);
         cLoaded.current = true;
     }, []);
 

@@ -17,8 +17,8 @@ export const getConversation = async (toUserId: string) : Promise<ResponseData<C
     return get<ConversationDTO>(url);
 }
 
-export const getAllConversations = async () : Promise<ResponseData<Pagination<ConversationDTO>>> => {
-    const url = `${EnvEnpoint()}/api/Chat/conversations`;
+export const getAllConversations = async (search?: string, page?: number, pageSize?: number) : Promise<ResponseData<Pagination<ConversationDTO>>> => {
+    const url = `${EnvEnpoint()}/api/Chat/conversations?search=${search}&page=${page || 1}&pageSize=${pageSize || 20}`;
     return get<Pagination<ConversationDTO>>(url);
 }
 

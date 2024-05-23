@@ -1,19 +1,21 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Space, Badge, Drawer } from 'antd';
+import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
 import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
-import Conversation from './components/Conversation/Conversation';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, MessageDto, RoomDTO, ConversationDTO, UserDTO, NotificationMessage } from './models/Models';
-import { createConversation, getConversation, getMessage, sendMessageToUser, getAllConversations } from './services/ChatServices';
+import { Coordinates, MatchDTO, MessageDto, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes } from './models/Models';
+import { createConversation, getAllConversations, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
+import { createNotification, updateConversationNotificationsToSeen } from './services/NotificationServices';
+import ScrollToBottom from 'react-scroll-to-bottom';
 const { Search } = Input;
 
 const App: FC = () => {
@@ -34,12 +36,15 @@ const App: FC = () => {
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
   const [conversations, setConversations] = useState<ConversationDTO[]>([]);
   const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
-  const messageRefs = useRef<Array<HTMLDivElement>>([]);
-  const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
-  const [currentNotification, setCurrentNotification] = useState<NotificationMessage>();
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
   const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
-
+  const [allConversations, setAllConversations] = useState<ConversationDTO[]>([]);
+  const [conversationPage, setConversationPage] = useState(1);
+  const [conversationLoading, setConversationLoading] = useState(false);
+  const [messageSending, setMessageSending] = useState<Array<boolean>>([]);
+  const [openConversations, setOpenConversations] = useState<Array<boolean>>([]);
+  const [conversationCurrentMessages, setConversationCurrentMessages] = useState<Array<string>>([]);
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -71,9 +76,10 @@ const App: FC = () => {
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Debug)
       .build();
-    hubConnection.start().then(() => {
+    hubConnection.start().then(async () => {
       setConnection(hubConnection);
       setConnected(true);
+      await initAllConversations();
     }).catch((error) => {
       api.error({
         message: 'Connect Failed',
@@ -81,7 +87,14 @@ const App: FC = () => {
         duration: -1,
         placement: "top"
       });
-      addNewNotifications(SystemString.CannotConnectToServer, "error");
+      const newNotification: NotificationDto = {
+        id: uuidv4(),
+        description: SystemString.CannotConnectToServer,
+        notificationType: NotificationTypes.StandardNotification,
+        seen: false,
+        link: ""
+      }
+      addNewNotifications(newNotification, "error");
       setLoading(false);
     });
   }
@@ -112,7 +125,14 @@ const App: FC = () => {
       setUser(currentUser);
       return res.responseData.roomId ? true : false;
     } else {
-      addNewNotifications(res.errorMessage, "error");
+      const newNotification: NotificationDto = {
+        id: uuidv4(),
+        description: res.errorMessage.toString(),
+        notificationType: NotificationTypes.StandardNotification,
+        seen: false,
+        link: ""
+      }
+      addNewNotifications(newNotification, "error");
       return false;
     }
   }
@@ -151,8 +171,23 @@ const App: FC = () => {
       connection.on("NewPersonalMessage", (data: MessageDto) => {
         setNewReceivedMessage(data);
       });
-    }
 
+      connection.on("NewNotification", (data: NotificationDto) => {
+        addNewNotifications(data, 'info');
+        if ((data.conversationId && data.conversationId !== "00000000-0000-0000-0000-000000000000")
+          || (data.conversation?.id && data.conversation?.id !== "00000000-0000-0000-0000-000000000000")) {
+          let conversationId: string;
+          if (data.conversationId !== "00000000-0000-0000-0000-000000000000") {
+            conversationId = data.conversationId!;
+          }
+          if (data.conversation?.id !== "00000000-0000-0000-0000-000000000000") {
+            conversationId = data.conversation?.id!;
+          }
+          handleUnReadConversationWhenReceiveOpenMessage(conversationId!, true);
+        }
+
+      });
+    }
   }, [connection]);
 
   useEffect(() => {
@@ -161,17 +196,39 @@ const App: FC = () => {
     }
   }, [newReceivedMessage]);
 
-  useEffect(() => {
-    if (messageRefs.current![conversations.length - 1]) {
-      messageRefs.current![conversations.length - 1].scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [conversations]);
+  const handleUnReadConversationWhenReceiveOpenMessage = (conversationId: string, unRead: boolean) => {
+    setAllConversations(prev => {
+      const newCons = [...prev];
+      for (let index = 0; index < newCons.length; index++) {
+        const con = newCons[index];
+        if (con.id === conversationId) {
+          con.unRead = unRead;
+          break;
+        }
+      }
+      return newCons;
+    });
+  }
 
-  const pushMessageRef = (el: HTMLDivElement, idx: number) => messageRefs.current[idx] = el;
+  const initAllConversations = async () => {
+    if (conversationLoading) {
+      return;
+    }
+    setConversationLoading(true);
+    const result = await getAllConversations("page", conversationPage, 20);
+    if (result.isSuccess && result.responseData.items && result.responseData.items.length) {
+      const newData: ConversationDTO[] = [...result.responseData.items];
+      setConversationPage(prev => prev + 1);
+      setConversationLoading(false);
+      setAllConversations(prev => [...prev, ...newData]);
+    } else {
+      addNewNotifications(result.errorMessage, "error");
+      setConversationLoading(false);
+    }
+  }
 
   const handleWhenReceivingMessages = async (data: MessageDto) => {
     let newConversations = [...conversations];
-    let idx: number = -1;
     const newMessage: MessageDto = {
       isMyMessage: false,
       content: data.content,
@@ -186,7 +243,7 @@ const App: FC = () => {
       const converRes = await getConversation(data.userId || "");
       if (converRes.isSuccess && converRes.responseData) {
         newConversation = converRes.responseData;
-        newConversation.open = true;
+        newConversation.unRead = true;
         const messages = await getMessage(converRes.responseData.id);
         if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
           newConversation.messages = messages.responseData.items.map(m => {
@@ -208,19 +265,18 @@ const App: FC = () => {
       for (let index = 0; index < newConversations.length; index++) {
         const currentConversation = newConversations[index];
         if (currentConversation.id === data.conversationId) {
+          currentConversation.unRead = true;
           currentConversation.messages.push(newMessage);
-          idx = index;
           break;
         }
       }
     }
-
+    setOpenConversations(prev => {
+      const arr = [...prev];
+      arr[newConversations.length - 1] = true;
+      return arr;
+    });
     setConversations(newConversations);
-    if (idx >= 0) {
-      messageRefs.current![idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      messageRefs.current![0]?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
   }
 
   const handleWhenClickOnChatButton = async (data: UserDTO) => {
@@ -230,7 +286,16 @@ const App: FC = () => {
       let newConversation: ConversationDTO;
       const res = await getConversation(data.id);
       if (res.isSuccess && res.responseData) {
+        const updateNotiRes = await updateConversationNotificationsToSeen(res.responseData.id);
+        if (!updateNotiRes.isSuccess) {
+          addNewNotifications(updateNotiRes.errorMessage, "error");
+        } else {
+          handleUnReadConversationWhenReceiveOpenMessage(res.responseData.id, false);
+        }
         newConversation = res.responseData;
+        if (!newConversation.messages) {
+          newConversation.messages = [];
+        }
         newConversation.open = true;
         const messages = await getMessage(res.responseData.id);
         if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
@@ -254,11 +319,27 @@ const App: FC = () => {
           newConversations.push(createNewConvRes.responseData);
         }
       }
+      setOpenConversations(prev => {
+        const arr = [...prev];
+        arr[newConversations.length - 1] = true;
+        return arr;
+      });
     } else {
       for (let index = 0; index < newConversations.length; index++) {
         const currentConversation = newConversations[index];
         if (currentConversation.fromUserId === data.id || currentConversation.toUserId === data.id) {
-          currentConversation.open = true;
+          const updateNotiRes = await updateConversationNotificationsToSeen(currentConversation.id);
+          if (!updateNotiRes.isSuccess) {
+            addNewNotifications(updateNotiRes.errorMessage, "error");
+          } else {
+            handleUnReadConversationWhenReceiveOpenMessage(currentConversation.id, false);
+          }
+          currentConversation.unRead = false;
+          setOpenConversations(prev => {
+            const arr = [...prev];
+            arr[index] = true;
+            return arr;
+          });
           break;
         }
       }
@@ -266,8 +347,13 @@ const App: FC = () => {
     setConversations(newConversations);
   }
 
-  const handleSendMessage = async (data: ConversationDTO, value: string, idx: number) => {
+  const handleSendMessage = async (data: ConversationDTO, value: string, idx: number, event?: any) => {
     if (!value) return;
+    setMessageSending(prev => {
+      const newMS = [...prev];
+      newMS[idx] = true;
+      return newMS;
+    });
     const newMessageDto: MessageDto = {
       conversationId: data.id,
       content: value,
@@ -278,24 +364,31 @@ const App: FC = () => {
 
     const res = await sendMessageToUser(newMessageDto);
     if (res.isSuccess) {
-
-      let newArr = [...conversations];
-      const newMessage: MessageDto = {
-        isMyMessage: true,
-        content: value,
-        userId: user?.id || "",
-        isNewMessage: true,
-        createdDate: new Date(),
-        updatedDate: new Date()
-      };
-      for (let index = 0; index < newArr.length; index++) {
-        const currentMessageQueue = newArr[index];
-        if (currentMessageQueue.id === data.id) {
-          currentMessageQueue.messages.push(newMessage);
-          break;
+      const sendStatus = await sendNotificationWhenSendingMessage(data.id, newMessageDto.toUserId || "");
+      if (sendStatus) {
+        let newArr = [...conversations];
+        const newMessage: MessageDto = {
+          isMyMessage: true,
+          content: value,
+          userId: user?.id || "",
+          isNewMessage: true,
+          createdDate: new Date(),
+          updatedDate: new Date()
+        };
+        for (let index = 0; index < newArr.length; index++) {
+          const currentMessageQueue = newArr[index];
+          if (currentMessageQueue.id === data.id) {
+            currentMessageQueue.messages.push(newMessage);
+            break;
+          }
         }
+        setConversations(newArr);
+        setMessageSending(prev => {
+          const newMS = [...prev];
+          newMS[idx] = false;
+          return newMS;
+        });
       }
-      setConversations(newArr);
     } else {
       api.error({
         message: 'Send Failed',
@@ -304,21 +397,52 @@ const App: FC = () => {
         placement: "top"
       })
     }
-    messageRefs.current![idx].scrollIntoView({ behavior: "smooth", block: "start" });
+    event.target.blur();
+    setConversationCurrentMessages(prev => {
+      const newCCM = [...prev];
+      newCCM[idx] = "";
+      return newCCM;
+    })
+  }
+
+  const sendNotificationWhenSendingMessage = async (conversationId: string, userId: string): Promise<boolean> => {
+    const newNoti: NotificationDto = {
+      userId: userId,
+      conversationId: conversationId,
+      description: "Your have a new message",
+      notificationType: NotificationTypes.UnreadMessage,
+      seen: false,
+      link: ""
+    }
+
+    const res = await createNotification(newNoti);
+
+    if (res.isSuccess) {
+      return true;
+    } else {
+      const newNotification: NotificationDto = {
+        id: uuidv4(),
+        userId: userId,
+        conversationId: conversationId,
+        description: res.errorMessage.toString(),
+        notificationType: NotificationTypes.StandardNotification,
+        seen: false,
+        link: ""
+      }
+      addNewNotifications(newNotification, "error");
+    }
+
+    return false;
   }
 
   const renderOutgoingIncomingMessage = (isMyMessage: boolean) => {
     return isMyMessage ? "outgoing-message" : "incomming-message";
   }
 
-  const renderFocusMessage = (isNewMessage: boolean) => {
-    return isNewMessage ? "new-message" : "";
-  }
-
   const handleHideMesssge = (idx: number) => {
-    setConversations(prev => {
+    setOpenConversations(prev => {
       const arr = [...prev];
-      arr[idx].open = !arr[idx].open;
+      arr[idx] = !arr[idx];
       return arr;
     });
   }
@@ -334,34 +458,49 @@ const App: FC = () => {
   const handleCloseErrorMessage = (id: string) => {
     const filteredNotifications = [...notifications].filter(p => p.id !== id);
     setNotifications(filteredNotifications);
-    setCurrentNotification(filteredNotifications[filteredNotifications.length - 1]);
     if (!filteredNotifications.length) setOpenNotificationPanel(false);
   }
 
-  const addNewNotifications = (content: string | string[], type: "success" | "info" | "warning" | "error") => {
-    if (Array.isArray(content)) {
-      const notificationMessages = content.map(c => {
-        const mess: NotificationMessage = {
-          id: uuidv4(),
-          content: c,
-          type: type
-        };
-        return mess;
-      });
-      setNotifications(prev => [...prev, ...notificationMessages]);
-      setCurrentNotification(notificationMessages[notificationMessages.length - 1]);
+  const addNewNotifications = (data: NotificationDto | NotificationDto[] | string | string[], type: "success" | "info" | "warning" | "error") => {
+    if (Array.isArray(data)) {
+      if (typeof data[0] === "string" && typeof data[0] !== "object") {
+        const notificationMessages = data.map(d => {
+          const noti: NotificationDto = {
+            id: uuidv4(),
+            description: d.toString(),
+            type: type,
+            link: "",
+            seen: false
+          };
+          return noti;
+        });
+        setNotifications(prev => [...prev, ...notificationMessages]);
+      } else {
+        const newData: NotificationDto[] = [...data as NotificationDto[]];
+        newData.forEach(d => {
+          d.type = type;
+          if (!d.id) {
+            d.id = uuidv4();
+          }
+        });
+        setNotifications(prev => [...prev, ...newData]);
+      }
     } else {
-      const notiId = uuidv4();
-      setNotifications(prev => [...prev, {
-        id: notiId,
-        content: content,
-        type: type
-      }]);
-      setCurrentNotification({
-        id: notiId,
-        content: content,
-        type: type
-      });
+      if (typeof data === "string") {
+        const notiId = uuidv4();
+        setNotifications(prev => [...prev, {
+          id: notiId,
+          description: data,
+          type: type,
+          seen: false,
+          link: ""
+        }]);
+      } else {
+        const newData: NotificationDto = data as NotificationDto;
+        newData.type = type;
+        newData.id = newData.id || uuidv4();
+        setNotifications(prev => [...prev, newData]);
+      }
     }
   }
 
@@ -380,14 +519,15 @@ const App: FC = () => {
             </div>
           </div>
           <div className="notifications">
-            {currentNotification ?
+            {notifications[notifications.length - 1] ?
               <Alert
-                key={currentNotification.id}
+                key={notifications[notifications.length - 1].id}
                 banner
+                onClick={() => setOpenNotificationPanel(true)}
                 closable
-                message={currentNotification.content}
-                type={currentNotification.type}
-                onClose={() => handleCloseErrorMessage(currentNotification.id)}
+                message={notifications[notifications.length - 1].description}
+                type={notifications[notifications.length - 1].type}
+                onClose={() => handleCloseErrorMessage(notifications[notifications.length - 1].id || "")}
               />
               :
               <></>
@@ -398,7 +538,7 @@ const App: FC = () => {
             <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(true)} />
           </Badge>
           {user ?
-            <Badge count={1} size='small' style={{ cursor: "pointer" }} >
+            <Badge count={allConversations.filter(c => c.unRead).length} size='small' style={{ cursor: "pointer" }} >
               <Button type="default" shape="circle" size='small' icon={<MessageOutlined />} onClick={() => setOpenConversationPanel(true)} />
             </Badge>
             :
@@ -473,11 +613,50 @@ const App: FC = () => {
                 open={openConversationPanel}
                 className='conversations'
                 style={{
-                  borderRadius: 20,
-                  // boxShadow: "0 0 40px 0 rgba(0,0,0,.45)"
+                  borderRadius: 20
                 }}
               >
-                <Conversation />
+                <div
+                  id="scrollableDiv"
+                  style={{
+                    height: 400,
+                    overflow: 'auto',
+                    padding: '0 16px',
+                    border: '1px solid rgba(140, 140, 140, 0.35)',
+                  }}
+                >
+                  <InfiniteScroll
+                    dataLength={allConversations.length}
+                    next={initAllConversations}
+                    hasMore={allConversations.length >= 20}
+                    loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
+                    scrollableTarget="scrollableDiv"
+                  >
+                    <List
+                      bordered={false}
+                      dataSource={allConversations}
+                      renderItem={(item) => (
+                        <List.Item
+                          key={item.id}
+                          style={{ border: "none", padding: 12 }}
+                          className={`conversation-li`}
+                          onClick={() => {
+                            handleWhenClickOnChatButton(item.users.find(u => u.id !== user?.id)!);
+                            setOpenConversationPanel(false);
+                          }}
+                        >
+                          <List.Item.Meta
+                            avatar={<Avatar src={item.users[0].userName} />}
+                            title={item.users.find(u => u.id !== user?.id)?.userName}
+                            description={item.messages[0].content}
+                            className={`conversation-item ${item.unRead ? "unread" : ""}`}
+                          />
+                          <div className='badge'></div>
+                        </List.Item>
+                      )}
+                    />
+                  </InfiniteScroll>
+                </div>
               </Drawer>
             </AppContext.Provider>
         }
@@ -487,14 +666,14 @@ const App: FC = () => {
             <div className="message-queue">
               {
                 conversations.map((c, idx) => (
-                  <div className="message-card">
-                    <div className="title">
+                  <div className="message-card" onClick={c.unRead ? () => handleWhenClickOnChatButton(c.users.find(u => u.id !== user?.id)!) : () => {}}>
+                    <div className={`title ${c.unRead ? 'have-message' : ""}`}>
                       <div className='from-user'>
                         <Button
-                          type="primary"
+                          type="default"
                           shape="circle"
                           size='small'
-                          icon={c.open ? <CaretDownOutlined /> : <CaretUpOutlined />}
+                          icon={openConversations[idx] ? <CaretDownOutlined /> : <CaretUpOutlined />}
                           onClick={() => handleHideMesssge(idx)}
                         />
                         From: {c.users.find(u => u.id !== user?.id)?.userName}
@@ -505,43 +684,42 @@ const App: FC = () => {
                         />
                       </div>
                     </div>
-                    <div className={c.open ? "card-body" : "card-body close"}>
-                      <div className="content">
-                        <div className="messages">
-                          {
-                            c.messages.map(ms => (
-                              <Collapse
-                                className={`${renderOutgoingIncomingMessage(ms.isMyMessage)} ${renderFocusMessage(ms.isMyMessage)}`}
-                                items={[{
-                                  key: ms.id,
-                                  label: <span>{ms.content}</span>,
-                                  children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
-                                }]}
-                                expandIcon={() =>
-                                  <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                    {c.users.find(u => u.id === ms.userId)?.userName}
-                                  </Avatar>
-                                }
-                                size="small"
-                                expandIconPosition={ms.isMyMessage ? "start" : "end"}
-                              />
-                            ))
-                          }
-                        </div>
-                        <div ref={el => pushMessageRef(el!, idx)} />
-                      </div>
-                      <div className="send-action">
-                        <Search
-                          placeholder="Type your messages here"
-                          enterButton={<SendOutlined />}
-                          size="middle"
-
-                          onSearch={(value: string) => handleSendMessage(c, value, idx)}
-                          autoFocus
-                        />
-                      </div>
+                    <ScrollToBottom className={openConversations[idx] ? "card-body" : "card-body close"} scrollViewClassName='messages'>
+                      {
+                        c.messages?.map(ms => (
+                          <Collapse
+                            className={`${renderOutgoingIncomingMessage(ms.isMyMessage)}`}
+                            items={[{
+                              key: ms.id,
+                              label: <span>{ms.content}</span>,
+                              children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
+                            }]}
+                            expandIcon={() =>
+                              <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
+                                {c.users.find(u => u.id === ms.userId)?.userName}
+                              </Avatar>
+                            }
+                            size="small"
+                            expandIconPosition={ms.isMyMessage ? "start" : "end"}
+                          />
+                        ))
+                      }
+                    </ScrollToBottom>
+                    <div className="send-action">
+                      <Search
+                        placeholder="Type your messages here"
+                        enterButton={<SendOutlined />}
+                        size="middle"
+                        value={conversationCurrentMessages[idx]}
+                        loading={messageSending[idx]}
+                        onSearch={(value: string, event) => handleSendMessage(c, value, idx, event)}
+                        onChange={(event) => setConversationCurrentMessages(prev => {
+                          const newCCM = [...prev];
+                          newCCM[idx] = event.target.value;
+                          return newCCM;
+                        })}
+                      />
                     </div>
-
                   </div>
                 ))
               }
@@ -563,7 +741,6 @@ const App: FC = () => {
             <Button type="link" onClick={() => {
               setNotifications([]);
               setOpenNotificationPanel(false);
-              setCurrentNotification(undefined);
             }}>
               Dismiss All
             </Button>
@@ -578,9 +755,9 @@ const App: FC = () => {
                   key={nt.id}
                   banner
                   closable
-                  message={nt.content}
+                  message={nt.description}
                   type={nt.type}
-                  onClose={() => handleCloseErrorMessage(nt.id)}
+                  onClose={() => handleCloseErrorMessage(nt.id || "")}
                 />
               )
             })
