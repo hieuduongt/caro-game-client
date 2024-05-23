@@ -648,7 +648,7 @@ const App: FC = () => {
                           <List.Item.Meta
                             avatar={<Avatar src={item.users[0].userName} />}
                             title={item.users.find(u => u.id !== user?.id)?.userName}
-                            description={item.messages[0].content}
+                            description={item.messages![0]?.content}
                             className={`conversation-item ${item.unRead ? "unread" : ""}`}
                           />
                           <div className='badge'></div>
