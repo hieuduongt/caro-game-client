@@ -670,7 +670,7 @@ const App: FC = () => {
                     <div className={`title ${c.unRead ? 'have-message' : ""}`}>
                       <div className='from-user'>
                         <Button
-                          type="default"
+                          type="text"
                           shape="circle"
                           size='small'
                           icon={openConversations[idx] ? <CaretDownOutlined /> : <CaretUpOutlined />}
