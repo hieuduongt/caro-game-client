@@ -10,6 +10,7 @@
     "@types/node": "^16.18.68",
     "@types/react": "^18.2.42",
     "@types/react-dom": "^18.2.17",
+    "@types/react-scroll-to-bottom": "^4.2.5",
     "antd": "^5.12.2",
     "axios": "^1.6.2",
     "jwt-decode": "^4.0.0",

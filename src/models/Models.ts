@@ -84,6 +84,7 @@ export interface ConversationDTO {
     fromUserId?: string;
     toUserId?: string;
     messages: MessageDto[];
+    unRead?: boolean;
 }
 
 export interface MessageDto {
@@ -155,3 +156,22 @@ export const Roles = [
         value: "guest"
     }
 ]
+
+export enum NotificationTypes {
+    StandardNotification,
+    UnreadMessage
+}
+
+export interface NotificationDto {
+    id?: string;
+    description: string;
+    notificationType?: NotificationTypes;
+    user?: UserDTO;
+    link: string;
+    userId?: string;
+    conversationId?: string;
+    seen: boolean;
+    fromUserId?: string;
+    conversation?: ConversationDTO;
+    type?: "success" | "info" | "warning" | "error";
+}
