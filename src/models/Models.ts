@@ -10,6 +10,11 @@ export interface NotificationMessage {
     type: "success" | "info" | "warning" | "error";
 }
 
+export interface MessageCardDto {
+    conversatioId: string;
+    userId: string;
+}
+
 export interface RegisterDTO {
     username: string;
     email: string;
@@ -26,6 +31,13 @@ export interface ResponseData<T> {
 
 export interface Pagination<T> {
     items?: Array<T>;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalRecords: number;
+}
+
+export interface PaginationObject {
     currentPage: number;
     pageSize: number;
     totalPages: number;
@@ -51,6 +63,7 @@ export interface RoomDTO {
     numberOfUsers?: number;
     members?: UserDTO[];
     matchs?: MatchDTO[];
+    conversation: ConversationDTO;
 }
 
 export interface UserDTO {
@@ -85,6 +98,8 @@ export interface ConversationDTO {
     toUserId?: string;
     messages: MessageDto[];
     unRead?: boolean;
+    page?: number;
+    totalPages?: number;
 }
 
 export interface MessageDto {
@@ -97,7 +112,6 @@ export interface MessageDto {
     createdDate?: Date;
     conversationId?: string;
     conversation?: ConversationDTO;
-    isMyMessage: boolean;
     isNewMessage?: boolean;
 }
 

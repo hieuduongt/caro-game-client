@@ -1,22 +1,21 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix, Collapse, Input, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
-import { LoadingOutlined, SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
+import { notification, Spin, Popover, Button, Avatar, Affix, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
+import { LoadingOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, MessageDto, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes } from './models/Models';
-import { createConversation, getAllConversations, getConversation, getMessage, sendMessageToUser } from './services/ChatServices';
+import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto } from './models/Models';
+import { createConversation, getAllConversations, getConversationToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
-import { createNotification, updateConversationNotificationsToSeen } from './services/NotificationServices';
-import ScrollToBottom from 'react-scroll-to-bottom';
-const { Search } = Input;
+import { updateConversationNotificationsToSeen } from './services/NotificationServices';
+import MessageCard from './components/MessageCard/MessageCard';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -34,17 +33,12 @@ const App: FC = () => {
   const [roomInfo, setRoomInfo] = useState<RoomDTO>();
   const [matchInfo, setMatchInfo] = useState<MatchDTO>();
   const [listCoordinates, setListCoordinates] = useState<Coordinates[]>();
-  const [conversations, setConversations] = useState<ConversationDTO[]>([]);
-  const [newReceivedMessage, setNewReceivedMessage] = useState<MessageDto>();
+  const [messageCards, setMessageCards] = useState<MessageCardDto[]>([]);
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
   const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
   const [allConversations, setAllConversations] = useState<ConversationDTO[]>([]);
-  const [conversationPage, setConversationPage] = useState(1);
   const [conversationLoading, setConversationLoading] = useState(false);
-  const [messageSending, setMessageSending] = useState<Array<boolean>>([]);
-  const [openConversations, setOpenConversations] = useState<Array<boolean>>([]);
-  const [conversationCurrentMessages, setConversationCurrentMessages] = useState<Array<string>>([]);
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -79,7 +73,7 @@ const App: FC = () => {
     hubConnection.start().then(async () => {
       setConnection(hubConnection);
       setConnected(true);
-      await initAllConversations();
+      await getAllConversationsWhenOpen();
     }).catch((error) => {
       api.error({
         message: 'Connect Failed',
@@ -144,6 +138,7 @@ const App: FC = () => {
     connection?.stop();
     setConnected(false);
     setConnection(undefined);
+    window.location.reload();
   }
 
   useEffect((): any => {
@@ -168,57 +163,24 @@ const App: FC = () => {
 
   useEffect(() => {
     if (connection) {
-      connection.on("NewPersonalMessage", (data: MessageDto) => {
-        setNewReceivedMessage(data);
-      });
-
       connection.on("NewNotification", (data: NotificationDto) => {
         addNewNotifications(data, 'info');
-        if ((data.conversationId && data.conversationId !== "00000000-0000-0000-0000-000000000000")
-          || (data.conversation?.id && data.conversation?.id !== "00000000-0000-0000-0000-000000000000")) {
-          let conversationId: string;
-          if (data.conversationId !== "00000000-0000-0000-0000-000000000000") {
-            conversationId = data.conversationId!;
-          }
-          if (data.conversation?.id !== "00000000-0000-0000-0000-000000000000") {
-            conversationId = data.conversation?.id!;
-          }
-          handleUnReadConversationWhenReceiveOpenMessage(conversationId!, true);
-        }
+      });
 
+      connection.on("NewPersonalMessage", (data: MessageDto) => {
+        handleWhenOpeningNewConversation(data.userId!);
       });
     }
   }, [connection]);
 
-  useEffect(() => {
-    if (newReceivedMessage) {
-      handleWhenReceivingMessages(newReceivedMessage);
-    }
-  }, [newReceivedMessage]);
-
-  const handleUnReadConversationWhenReceiveOpenMessage = (conversationId: string, unRead: boolean) => {
-    setAllConversations(prev => {
-      const newCons = [...prev];
-      for (let index = 0; index < newCons.length; index++) {
-        const con = newCons[index];
-        if (con.id === conversationId) {
-          con.unRead = unRead;
-          break;
-        }
-      }
-      return newCons;
-    });
-  }
-
-  const initAllConversations = async () => {
+  const getAllConversationsWhenOpen = async () => {
     if (conversationLoading) {
       return;
     }
     setConversationLoading(true);
-    const result = await getAllConversations("page", conversationPage, 20);
+    const result = await getAllConversations("", 1, 20);
     if (result.isSuccess && result.responseData.items && result.responseData.items.length) {
       const newData: ConversationDTO[] = [...result.responseData.items];
-      setConversationPage(prev => prev + 1);
       setConversationLoading(false);
       setAllConversations(prev => [...prev, ...newData]);
     } else {
@@ -227,232 +189,38 @@ const App: FC = () => {
     }
   }
 
-  const handleWhenReceivingMessages = async (data: MessageDto) => {
-    let newConversations = [...conversations];
-    const newMessage: MessageDto = {
-      isMyMessage: false,
-      content: data.content,
-      userId: data.userId || "",
-      isNewMessage: true,
-      createdDate: data.createdDate,
-      updatedDate: data.updatedDate
-    }
-    const currentConversation = newConversations.some((c: ConversationDTO) => c.id === data.conversationId);
-    if (!currentConversation) {
-      let newConversation: ConversationDTO;
-      const converRes = await getConversation(data.userId || "");
-      if (converRes.isSuccess && converRes.responseData) {
-        newConversation = converRes.responseData;
-        newConversation.unRead = true;
-        const messages = await getMessage(converRes.responseData.id);
-        if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
-          newConversation.messages = messages.responseData.items.map(m => {
-            const newMessage: MessageDto = {
-              id: m.id,
-              content: m.content,
-              isMyMessage: m.userId === user?.id,
-              createdDate: m.createdDate,
-              updatedDate: m.updatedDate,
-              isNewMessage: false,
-              userId: m.userId || ""
-            }
-            return newMessage;
-          });
-        }
-        newConversations.push(newConversation);
-      }
-    } else {
-      for (let index = 0; index < newConversations.length; index++) {
-        const currentConversation = newConversations[index];
-        if (currentConversation.id === data.conversationId) {
-          currentConversation.unRead = true;
-          currentConversation.messages.push(newMessage);
-          break;
-        }
-      }
-    }
-    setOpenConversations(prev => {
-      const arr = [...prev];
-      arr[newConversations.length - 1] = true;
-      return arr;
-    });
-    setConversations(newConversations);
-  }
-
-  const handleWhenClickOnChatButton = async (data: UserDTO) => {
-    let newConversations = [...conversations];
-    const currentConversation = newConversations.some((c: ConversationDTO) => c.users.find(u => u.id === data.id));
-    if (!currentConversation) {
-      let newConversation: ConversationDTO;
-      const res = await getConversation(data.id);
-      if (res.isSuccess && res.responseData) {
-        const updateNotiRes = await updateConversationNotificationsToSeen(res.responseData.id);
-        if (!updateNotiRes.isSuccess) {
-          addNewNotifications(updateNotiRes.errorMessage, "error");
-        } else {
-          handleUnReadConversationWhenReceiveOpenMessage(res.responseData.id, false);
-        }
-        newConversation = res.responseData;
-        if (!newConversation.messages) {
-          newConversation.messages = [];
-        }
-        newConversation.open = true;
-        const messages = await getMessage(res.responseData.id);
-        if (messages.isSuccess && messages.responseData.items && messages.responseData.items.length) {
-          newConversation.messages = messages.responseData.items.map(m => {
-            const newMessage: MessageDto = {
-              id: m.id,
-              content: m.content,
-              isMyMessage: m.userId === user?.id,
-              createdDate: m.createdDate,
-              updatedDate: m.updatedDate,
-              isNewMessage: false,
-              userId: m.userId || ""
-            }
-            return newMessage;
-          });
-        }
-        newConversations.push(newConversation);
-      } else {
-        const createNewConvRes = await createConversation(data.id);
-        if (createNewConvRes.isSuccess) {
-          newConversations.push(createNewConvRes.responseData);
-        }
-      }
-      setOpenConversations(prev => {
-        const arr = [...prev];
-        arr[newConversations.length - 1] = true;
-        return arr;
-      });
-    } else {
-      for (let index = 0; index < newConversations.length; index++) {
-        const currentConversation = newConversations[index];
-        if (currentConversation.fromUserId === data.id || currentConversation.toUserId === data.id) {
-          const updateNotiRes = await updateConversationNotificationsToSeen(currentConversation.id);
+  const handleWhenOpeningNewConversation = async (toUserId: string) => {
+    let newMcs = [...messageCards];
+    const currentMC = newMcs.some((c: MessageCardDto) => c.userId === toUserId);
+    if (!currentMC) {
+      let newMessageCard: MessageCardDto = {
+        conversatioId: "",
+        userId: ""
+      };
+      const res = await getConversationToUser(toUserId);
+      if (res.isSuccess) {
+        if (res.responseData) {
+          const updateNotiRes = await updateConversationNotificationsToSeen(res.responseData.id);
           if (!updateNotiRes.isSuccess) {
             addNewNotifications(updateNotiRes.errorMessage, "error");
           } else {
-            handleUnReadConversationWhenReceiveOpenMessage(currentConversation.id, false);
+            newMessageCard.conversatioId = res.responseData.id;
+            newMessageCard.userId = toUserId;
+            newMcs.push(newMessageCard);
           }
-          currentConversation.unRead = false;
-          setOpenConversations(prev => {
-            const arr = [...prev];
-            arr[index] = true;
-            return arr;
-          });
-          break;
-        }
-      }
-    }
-    setConversations(newConversations);
-  }
-
-  const handleSendMessage = async (data: ConversationDTO, value: string, idx: number, event?: any) => {
-    if (!value) return;
-    setMessageSending(prev => {
-      const newMS = [...prev];
-      newMS[idx] = true;
-      return newMS;
-    });
-    const newMessageDto: MessageDto = {
-      conversationId: data.id,
-      content: value,
-      userId: user?.id,
-      toUserId: data.users.find(u => u.id !== user?.id)?.id,
-      isMyMessage: true
-    }
-
-    const res = await sendMessageToUser(newMessageDto);
-    if (res.isSuccess) {
-      const sendStatus = await sendNotificationWhenSendingMessage(data.id, newMessageDto.toUserId || "");
-      if (sendStatus) {
-        let newArr = [...conversations];
-        const newMessage: MessageDto = {
-          isMyMessage: true,
-          content: value,
-          userId: user?.id || "",
-          isNewMessage: true,
-          createdDate: new Date(),
-          updatedDate: new Date()
-        };
-        for (let index = 0; index < newArr.length; index++) {
-          const currentMessageQueue = newArr[index];
-          if (currentMessageQueue.id === data.id) {
-            currentMessageQueue.messages.push(newMessage);
-            break;
+        } else {
+          const createNewConvRes = await createConversation(toUserId);
+          if (createNewConvRes.isSuccess) {
+            newMcs.push({ conversatioId: createNewConvRes.responseData.id, userId: toUserId });
+          } else {
+            addNewNotifications(createNewConvRes.errorMessage, "error");
           }
         }
-        setConversations(newArr);
-        setMessageSending(prev => {
-          const newMS = [...prev];
-          newMS[idx] = false;
-          return newMS;
-        });
+      } else {
+        addNewNotifications(res.errorMessage, "error");
       }
-    } else {
-      api.error({
-        message: 'Send Failed',
-        description: "Cannot send your message with error:" + res.errorMessage,
-        duration: -1,
-        placement: "top"
-      })
     }
-    event.target.blur();
-    setConversationCurrentMessages(prev => {
-      const newCCM = [...prev];
-      newCCM[idx] = "";
-      return newCCM;
-    })
-  }
-
-  const sendNotificationWhenSendingMessage = async (conversationId: string, userId: string): Promise<boolean> => {
-    const newNoti: NotificationDto = {
-      userId: userId,
-      conversationId: conversationId,
-      description: "Your have a new message",
-      notificationType: NotificationTypes.UnreadMessage,
-      seen: false,
-      link: ""
-    }
-
-    const res = await createNotification(newNoti);
-
-    if (res.isSuccess) {
-      return true;
-    } else {
-      const newNotification: NotificationDto = {
-        id: uuidv4(),
-        userId: userId,
-        conversationId: conversationId,
-        description: res.errorMessage.toString(),
-        notificationType: NotificationTypes.StandardNotification,
-        seen: false,
-        link: ""
-      }
-      addNewNotifications(newNotification, "error");
-    }
-
-    return false;
-  }
-
-  const renderOutgoingIncomingMessage = (isMyMessage: boolean) => {
-    return isMyMessage ? "outgoing-message" : "incomming-message";
-  }
-
-  const handleHideMesssge = (idx: number) => {
-    setOpenConversations(prev => {
-      const arr = [...prev];
-      arr[idx] = !arr[idx];
-      return arr;
-    });
-  }
-
-  const handleCloseMesssge = (idx: number) => {
-    setConversations(prev => {
-      const arr = [...prev];
-      arr.splice(idx, 1);
-      return arr;
-    });
+    setMessageCards(newMcs);
   }
 
   const handleCloseErrorMessage = (id: string) => {
@@ -504,6 +272,19 @@ const App: FC = () => {
     }
   }
 
+  const handleWhenOpenConversationPanel = async () => {
+    await getAllConversationsWhenOpen();
+    setOpenConversationPanel(true);
+  }
+
+  const handleCloseMessageCard = (conversationId: string) => {
+    setMessageCards(prev => {
+      const newMCs = [...prev];
+      const returnMCs = newMCs.filter(m => m.conversatioId !== conversationId);
+      return returnMCs;
+    })
+  }
+
   return (
     <>
       <Affix offsetTop={0} style={{ marginBottom: 10 }}>
@@ -523,9 +304,8 @@ const App: FC = () => {
               <Alert
                 key={notifications[notifications.length - 1].id}
                 banner
-                onClick={() => setOpenNotificationPanel(true)}
                 closable
-                message={notifications[notifications.length - 1].description}
+                message={<div style={{ width: "100%" }} onClick={() => setOpenNotificationPanel(true)}>{notifications[notifications.length - 1].description}</div>}
                 type={notifications[notifications.length - 1].type}
                 onClose={() => handleCloseErrorMessage(notifications[notifications.length - 1].id || "")}
               />
@@ -539,7 +319,7 @@ const App: FC = () => {
           </Badge>
           {user ?
             <Badge count={allConversations.filter(c => c.unRead).length} size='small' style={{ cursor: "pointer" }} >
-              <Button type="default" shape="circle" size='small' icon={<MessageOutlined />} onClick={() => setOpenConversationPanel(true)} />
+              <Button type="default" shape="circle" size='small' icon={<MessageOutlined />} onClick={handleWhenOpenConversationPanel} />
             </Badge>
             :
             <></>
@@ -603,7 +383,7 @@ const App: FC = () => {
               addNewNotifications
             }}>
               {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
-              {step === 2 ? <RoomList handleWhenClickOnChatButton={handleWhenClickOnChatButton} /> : <></>}
+              {step === 2 ? <RoomList handleWhenOpeningNewConversation={handleWhenOpeningNewConversation} /> : <></>}
               {step === 3 ? <InGame /> : <></>}
               <Drawer
                 title="Your Conversations"
@@ -627,7 +407,7 @@ const App: FC = () => {
                 >
                   <InfiniteScroll
                     dataLength={allConversations.length}
-                    next={initAllConversations}
+                    next={getAllConversationsWhenOpen}
                     hasMore={allConversations.length >= 20}
                     loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
                     scrollableTarget="scrollableDiv"
@@ -641,7 +421,7 @@ const App: FC = () => {
                           style={{ border: "none", padding: 12 }}
                           className={`conversation-li`}
                           onClick={() => {
-                            handleWhenClickOnChatButton(item.users.find(u => u.id !== user?.id)!);
+                            handleWhenOpeningNewConversation(item.users.find(u => u.id !== user?.id)?.id!);
                             setOpenConversationPanel(false);
                           }}
                         >
@@ -660,74 +440,18 @@ const App: FC = () => {
               </Drawer>
             </AppContext.Provider>
         }
-
-        {
-          conversations.length ?
-            <div className="message-queue">
-              {
-                conversations.map((c, idx) => (
-                  <div className="message-card" onClick={c.unRead ? () => handleWhenClickOnChatButton(c.users.find(u => u.id !== user?.id)!) : () => {}}>
-                    <div className={`title ${c.unRead ? 'have-message' : ""}`}>
-                      <div className='from-user'>
-                        <Button
-                          type="text"
-                          shape="circle"
-                          size='small'
-                          icon={openConversations[idx] ? <CaretDownOutlined /> : <CaretUpOutlined />}
-                          onClick={() => handleHideMesssge(idx)}
-                        />
-                        From: {c.users.find(u => u.id !== user?.id)?.userName}
-                      </div>
-                      <div className="close-message-action">
-                        <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
-                          onClick={() => handleCloseMesssge(idx)}
-                        />
-                      </div>
-                    </div>
-                    <ScrollToBottom className={openConversations[idx] ? "card-body" : "card-body close"} scrollViewClassName='messages'>
-                      {
-                        c.messages?.map(ms => (
-                          <Collapse
-                            className={`${renderOutgoingIncomingMessage(ms.isMyMessage)}`}
-                            items={[{
-                              key: ms.id,
-                              label: <span>{ms.content}</span>,
-                              children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
-                            }]}
-                            expandIcon={() =>
-                              <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                {c.users.find(u => u.id === ms.userId)?.userName}
-                              </Avatar>
-                            }
-                            size="small"
-                            expandIconPosition={ms.isMyMessage ? "start" : "end"}
-                          />
-                        ))
-                      }
-                    </ScrollToBottom>
-                    <div className="send-action">
-                      <Search
-                        placeholder="Type your messages here"
-                        enterButton={<SendOutlined />}
-                        size="middle"
-                        value={conversationCurrentMessages[idx]}
-                        loading={messageSending[idx]}
-                        onSearch={(value: string, event) => handleSendMessage(c, value, idx, event)}
-                        onChange={(event) => setConversationCurrentMessages(prev => {
-                          const newCCM = [...prev];
-                          newCCM[idx] = event.target.value;
-                          return newCCM;
-                        })}
-                      />
-                    </div>
-                  </div>
-                ))
-              }
-
-            </div>
-            :
-            <></>
-        }
+        <div className="message-bar">
+          {
+            messageCards.map(ms => (
+              <MessageCard
+                conversationId={ms.conversatioId}
+                handleCloseMessageCard={handleCloseMessageCard}
+                connection={connection} user={user!}
+                addNewNotifications={addNewNotifications}
+              />
+            ))
+          }
+        </div>
 
       </div >
       <Drawer

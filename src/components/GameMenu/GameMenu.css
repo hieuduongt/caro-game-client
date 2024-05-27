@@ -1,5 +1,4 @@
 .game-menu {
-  margin-left: 20px;
   width: 100%;
 }
 
@@ -10,7 +9,7 @@
   flex-direction: row;
   align-items: flex-end;
   justify-content: center;
-  margin-bottom: 20px;
+  gap: 10px;
 }
 
 .player {
@@ -71,10 +70,6 @@
   box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
 }
 
-.player:has(+ .player) {
-  margin-right: 20px;
-}
-
 .player-info>.info {
   display: flex;
   flex-direction: column;
@@ -109,6 +104,12 @@
 
 .player-name {
   font-weight: bold;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  max-width: 100px;
 }
 
 .number-of-wins {
@@ -120,31 +121,59 @@
   font-weight: 500;
 }
 
+.chat-area {
+  min-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .chat-title {
   text-align: center;
   font-weight: 600;
 }
 
 .chat-content {
-  border-radius: 8px;
-  width: 100%;
   min-height: 300px;
-  max-height: 400px;
-  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.45) inset;
-  margin-bottom: 10px;
+  max-height: 450px;
+  height: 100%;
   position: relative;
 }
 
 .chat-messages {
+  border-radius: 8px;
   height: 370px;
-  max-height: 370px;
-  overflow-y: auto;
-  padding: 10px;
+  max-height: 400px;
+  padding: 5px;
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.45) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.users-in-room {
+  height: 35px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  padding-left: 5px;
+  padding-right: 5px;
+  gap: 5px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+}
+
+.group-message {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 370px !important;
+  border-radius: 8px;
 }
 
 .chat-input {
   width: 100%;
-  margin-bottom: 20px;
+  height: 32px;
 }
 
 .message {
@@ -164,12 +193,6 @@
 }
 
 @media only screen and (max-width: 1280px) {
-  .in-game-container {
-    display: flex;
-    margin-right: 20px;
-    margin-left: 20px;
-    margin-top: 20px;
-  }
 
   .game-introducing {
     margin-right: 20px;
@@ -177,11 +200,8 @@
   }
 }
 
-
 @media only screen and (max-width: 1140px) {
   .game-menu {
     max-width: 800px;
-    margin-left: 0 !important;
-    margin-bottom: 20px;
   }
 }

@@ -12,8 +12,13 @@ export const createConversation = async (toUserId: string) : Promise<ResponseDat
     return post<ConversationDTO>(url);
 }
 
-export const getConversation = async (toUserId: string) : Promise<ResponseData<ConversationDTO>> => {
-    const url = `${EnvEnpoint()}/api/Chat/conversation/${toUserId}`;
+export const getConversationToUser = async (toUserId: string) : Promise<ResponseData<ConversationDTO>> => {
+    const url = `${EnvEnpoint()}/api/Chat/conversation/to-user/${toUserId}`;
+    return get<ConversationDTO>(url);
+}
+
+export const getConversation = async (conversationId: string) : Promise<ResponseData<ConversationDTO>> => {
+    const url = `${EnvEnpoint()}/api/Chat/conversation/${conversationId}`;
     return get<ConversationDTO>(url);
 }
 
@@ -22,14 +27,14 @@ export const getAllConversations = async (search?: string, page?: number, pageSi
     return get<Pagination<ConversationDTO>>(url);
 }
 
-export const getMessage = async (conversationId: string) : Promise<ResponseData<Pagination<MessageDto>>> => {
-    const url = `${EnvEnpoint()}/api/Chat/conversation/user/messages/${conversationId}`;
+export const getMessage = async (conversationId: string, page?: number, pageSize?: number) : Promise<ResponseData<Pagination<MessageDto>>> => {
+    const url = `${EnvEnpoint()}/api/Chat/conversation/user/messages/${conversationId}?page=${page || 0}&pageSize=${pageSize || 20}`;
     return get<Pagination<MessageDto>>(url);
 }
 
-export const getMessageOfRoom = async (roomId: string) : Promise<ResponseData<MessageDto>> => {
+export const getMessageOfRoom = async (roomId: string) : Promise<ResponseData<Pagination<MessageDto>>> => {
     const url = `${EnvEnpoint()}/api/Chat/conversation/group/messages/${roomId}`;
-    return get<MessageDto>(url);
+    return get<Pagination<MessageDto>>(url);
 }
 
 export const sendMessageToUser = async (data: MessageDto) : Promise<ResponseData<undefined>> => {
@@ -39,5 +44,5 @@ export const sendMessageToUser = async (data: MessageDto) : Promise<ResponseData
 
 export const sendMessageToGroup = async (data: MessageDto) : Promise<ResponseData<undefined>> => {
     const url = `${EnvEnpoint()}/api/Chat/send-to-group`;
-    return post<undefined>(url);
+    return post<undefined>(url, data);
 }

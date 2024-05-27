@@ -13,8 +13,9 @@ import { RiLoginCircleLine } from "react-icons/ri";
 import { SystemString } from "../../common/StringHelper";
 import { getUnReadNotifications } from "../../services/NotificationServices";
 const { Search } = Input;
+
 interface RoomListProps extends React.HTMLAttributes<HTMLDivElement> {
-    handleWhenClickOnChatButton: (data: UserDTO) => void;
+    handleWhenOpeningNewConversation: (toUserId: string) => void;
 }
 
 const CustomRow: FC<any> = (props) => {
@@ -26,7 +27,7 @@ const CustomRow: FC<any> = (props) => {
 }
 
 const RoomList: FC<RoomListProps> = (props) => {
-    const { handleWhenClickOnChatButton } = props;
+    const { handleWhenOpeningNewConversation } = props;
     const [roomCreationForm] = Form.useForm<RoomDTO>();
     const { setRedirectToLogin, connection, setRoomInfo, user, setUser, setStep, addNewNotifications } = useContext(AppContext);
     const [listRooms, setListRooms] = useState<Pagination<RoomDTO>>();
@@ -166,7 +167,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Chat',
             key: 'action',
             render: (_, record: UserDTO) => (
-                <Button icon={<MessageTwoTone twoToneColor="#eb2f96" />} onClick={() => handleWhenClickOnChatButton(record)} type="text" shape="circle"></Button>
+                <Button icon={<MessageTwoTone twoToneColor="#eb2f96" />} onClick={() => handleWhenOpeningNewConversation(record.id)} type="text" shape="circle"></Button>
             )
         },
     ];
