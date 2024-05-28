@@ -1,7 +1,7 @@
 import React, { FC, useEffect, useRef, useState } from "react";
 import { Button, Avatar, Collapse, Input, notification } from 'antd';
 import { SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
-import ScrollToBottom, { FunctionContext, StateContext, useAtStart } from 'react-scroll-to-bottom';
+import ScrollToBottom from 'react-scroll-to-bottom';
 import { ConversationDTO, MessageDto, NotificationDto, NotificationTypes, PaginationObject, UserDTO } from "../../models/Models";
 import "./MessageCard.css";
 import { getConversation, getMessage, sendMessageToUser } from "../../services/ChatServices";
@@ -193,7 +193,7 @@ const MessageCard: FC<MessageCardProps> = (props) => {
                     />
                 </div>
             </div>
-            <ScrollToBottom className={open ? "card-body" : "card-body close"} scrollViewClassName='messages'>
+            <ScrollToBottom className={open ? "card-body" : "card-body close"} scrollViewClassName='messages' followButtonClassName="scroll-to-bottom">
                 {pagination?.currentPage !== 1 ?
                     <Button type="link" size="small" loading={messagesLoading} onClick={() => loadMoreMessages()}>
                         Previous Messages

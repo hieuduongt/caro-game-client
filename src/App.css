@@ -20,9 +20,13 @@
 
 .container {
   margin: auto;
-  margin-top: 20px;
   max-width: 1280px;
   min-width: 350px;
+}
+
+#root {
+  margin-top: 80px;
+  margin-bottom: 20px;
 }
 
 @media only screen and (max-width: 1280px) {
@@ -43,16 +47,26 @@
   }
 }
 
-.header {
-  /* box-shadow: rgba(33, 35, 38, 0.2) 0px 10px 10px -10px; */
+.header-panel {
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
-  min-height: 50px;
+  min-height: 60px;
   background-color: rgba(255, 255, 255, 0.466);
   backdrop-filter: blur(30px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+.header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px;
+  margin: 10px;
+  width: 100%;
 }
 
 .author {
@@ -78,6 +92,14 @@
 
 .notifications {
   width: 100%;
+  position: relative;
+}
+
+.notification-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .list-errors {
@@ -333,4 +355,12 @@
 
 .conversation-li>.conversation-item.unread+.badge {
   display: block;
+}
+
+.card-body>button.scroll-to-bottom::after {
+  content: "\25BC";
+  position: absolute;
+  top: 3.5px;
+  left: 3px;
+  transform: scale(0.8, 0.65);
 }

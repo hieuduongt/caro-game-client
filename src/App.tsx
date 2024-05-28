@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Affix, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
+import { notification, Spin, Popover, Button, Avatar, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
 import { LoadingOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
@@ -11,7 +11,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
 import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto } from './models/Models';
+import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto, PaginationObject, NewMessageModel } from './models/Models';
 import { createConversation, getAllConversations, getConversationToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
@@ -23,6 +23,7 @@ const App: FC = () => {
   const [isConnected, setConnected] = useState<boolean>(false);
   const [yourTurn, setYourTurn] = useState<boolean>(false);
   const [newGame, setNewGame] = useState<number>(0);
+  const [newMessage, setNewMessage] = useState<NewMessageModel>({index: 0, id: ""});
   const [start, setStart] = useState<boolean>(false);
   const [watchMode, setWatchMode] = useState<boolean>(false);
   const cLoaded = useRef<boolean>(false);
@@ -38,7 +39,13 @@ const App: FC = () => {
   const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
   const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
   const [allConversations, setAllConversations] = useState<ConversationDTO[]>([]);
-  const [conversationLoading, setConversationLoading] = useState(false);
+  const [conversationLoading, setConversationLoading] = useState<boolean>(false);
+  const [conversationPage, setConversationPage] = useState<PaginationObject>({
+    currentPage: 1,
+    totalPages: 0,
+    pageSize: 20,
+    totalRecords: 0
+  });
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
@@ -168,10 +175,14 @@ const App: FC = () => {
       });
 
       connection.on("NewPersonalMessage", (data: MessageDto) => {
-        handleWhenOpeningNewConversation(data.userId!);
+        setNewMessage(prev => ({index: prev.index + 1, id: data.toUserId!}));
       });
     }
   }, [connection]);
+
+  useEffect(() => {
+    handleWhenOpeningNewConversation(newMessage.id);
+  }, [newMessage]);
 
   const getAllConversationsWhenOpen = async () => {
     if (conversationLoading) {
@@ -182,7 +193,25 @@ const App: FC = () => {
     if (result.isSuccess && result.responseData.items && result.responseData.items.length) {
       const newData: ConversationDTO[] = [...result.responseData.items];
       setConversationLoading(false);
+      setAllConversations(newData);
+      setConversationPage({currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords});
+    } else {
+      addNewNotifications(result.errorMessage, "error");
+      setConversationLoading(false);
+    }
+  }
+
+  const loadMoreConversation = async () => {
+    if (conversationLoading) {
+      return;
+    }
+    setConversationLoading(true);
+    const result = await getAllConversations("", conversationPage.currentPage + 1, 20);
+    if (result.isSuccess && result.responseData.items && result.responseData.items.length) {
+      const newData: ConversationDTO[] = [...result.responseData.items];
+      setConversationLoading(false);
       setAllConversations(prev => [...prev, ...newData]);
+      setConversationPage({currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords});
     } else {
       addNewNotifications(result.errorMessage, "error");
       setConversationLoading(false);
@@ -206,6 +235,7 @@ const App: FC = () => {
           } else {
             newMessageCard.conversatioId = res.responseData.id;
             newMessageCard.userId = toUserId;
+            console.log(messageCards);
             newMcs.push(newMessageCard);
           }
         } else {
@@ -220,8 +250,12 @@ const App: FC = () => {
         addNewNotifications(res.errorMessage, "error");
       }
     }
+
+    console.log(newMcs);
     setMessageCards(newMcs);
   }
+
+  console.log(messageCards)
 
   const handleCloseErrorMessage = (id: string) => {
     const filteredNotifications = [...notifications].filter(p => p.id !== id);
@@ -272,8 +306,7 @@ const App: FC = () => {
     }
   }
 
-  const handleWhenOpenConversationPanel = async () => {
-    await getAllConversationsWhenOpen();
+  const handleWhenOpenConversationPanel = () => {
     setOpenConversationPanel(true);
   }
 
@@ -287,7 +320,7 @@ const App: FC = () => {
 
   return (
     <>
-      <Affix offsetTop={0} style={{ marginBottom: 10 }}>
+      <div className="header-panel">
         <div className="header">
           <div className="author">
             <div>
@@ -315,7 +348,7 @@ const App: FC = () => {
           </div>
 
           <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
-            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(true)} />
+            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
           </Badge>
           {user ?
             <Badge count={allConversations.filter(c => c.unRead).length} size='small' style={{ cursor: "pointer" }} >
@@ -351,8 +384,8 @@ const App: FC = () => {
           }
 
         </div>
+      </div>
 
-      </Affix>
       <div className='container'>
         {contextHolder}
         {
@@ -388,13 +421,9 @@ const App: FC = () => {
               <Drawer
                 title="Your Conversations"
                 placement="right"
-                width={350}
+                width={400}
                 onClose={() => setOpenConversationPanel(false)}
                 open={openConversationPanel}
-                className='conversations'
-                style={{
-                  borderRadius: 20
-                }}
               >
                 <div
                   id="scrollableDiv"
@@ -407,8 +436,8 @@ const App: FC = () => {
                 >
                   <InfiniteScroll
                     dataLength={allConversations.length}
-                    next={getAllConversationsWhenOpen}
-                    hasMore={allConversations.length >= 20}
+                    next={loadMoreConversation}
+                    hasMore={conversationPage.currentPage < conversationPage.totalPages}
                     loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
                     scrollableTarget="scrollableDiv"
                   >
@@ -456,8 +485,8 @@ const App: FC = () => {
       </div >
       <Drawer
         title="Notifications"
-        placement="top"
-        height={500}
+        placement="right"
+        width={400}
         onClose={() => setOpenNotificationPanel(false)}
         open={openNotificationPanel}
         extra={

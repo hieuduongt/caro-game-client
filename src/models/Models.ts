@@ -4,6 +4,11 @@ export interface LoginDTO {
     password: string;
 }
 
+export interface NewMessageModel {
+    index: number;
+    id: string;
+}
+
 export interface NotificationMessage {
     id: string;
     content: string;
@@ -92,14 +97,9 @@ export interface RoleDTO {
 
 export interface ConversationDTO {
     id: string;
-    open: boolean;
     users: UserDTO[];
-    fromUserId?: string;
-    toUserId?: string;
     messages: MessageDto[];
     unRead?: boolean;
-    page?: number;
-    totalPages?: number;
 }
 
 export interface MessageDto {
