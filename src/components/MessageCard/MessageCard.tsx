@@ -1,13 +1,12 @@
 import React, { FC, useEffect, useRef, useState } from "react";
 import { Button, Avatar, Collapse, Input, notification } from 'antd';
 import { SendOutlined, CloseCircleOutlined, CaretDownOutlined, CaretUpOutlined } from '@ant-design/icons';
-import ScrollToBottom from 'react-scroll-to-bottom';
-import { ConversationDTO, MessageDto, NotificationDto, NotificationTypes, PaginationObject, UserDTO } from "../../models/Models";
+import ScrollToBottom, { StateContext } from 'react-scroll-to-bottom';
+import { ConversationDTO, MessageDto, NotificationDto, PaginationObject, UserDTO } from "../../models/Models";
 import "./MessageCard.css";
 import { getConversation, getMessage, sendMessageToUser } from "../../services/ChatServices";
 import { formatUTCDateToLocalDate } from "../../helpers/Helper";
-import { createNotification } from "../../services/NotificationServices";
-import { v4 as uuidv4 } from 'uuid';
+import { updateConversationNotificationsToSeen } from "../../services/NotificationServices";
 const { Search } = Input;
 
 interface MessageCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -16,11 +15,13 @@ interface MessageCardProps extends React.HTMLAttributes<HTMLDivElement> {
     addNewNotifications: (data: NotificationDto | NotificationDto[] | string | string[], type: "success" | "info" | "warning" | "error") => void;
     user: UserDTO;
     connection: any;
+    hasBeenRead: boolean;
+    handleReadConversation?: (conversationId: string) => void
 }
 
 const MessageCard: FC<MessageCardProps> = (props) => {
     const [api, contextHolder] = notification.useNotification();
-    const { conversationId, handleCloseMessageCard, user, addNewNotifications, connection } = props;
+    const { conversationId, handleCloseMessageCard, user, addNewNotifications, connection, hasBeenRead, handleReadConversation } = props;
     const [messages, setMessages] = useState<MessageDto[]>([]);
     const [pagination, setPagination] = useState<PaginationObject>();
     const [conversation, setConversation] = useState<ConversationDTO>();
@@ -30,6 +31,7 @@ const MessageCard: FC<MessageCardProps> = (props) => {
     const [unRead, setUnRead] = useState<boolean>(false);
     const isLoaded = useRef<boolean>(false);
     const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
+    const [atBottom, setAtBottom] = useState<boolean>(true);
 
     const getTheConversation = async (conversationId: string) => {
         const res = await getConversation(conversationId);
@@ -78,6 +80,10 @@ const MessageCard: FC<MessageCardProps> = (props) => {
     }
 
     useEffect(() => {
+        if(hasBeenRead) setUnRead(true);
+    }, [hasBeenRead]);
+
+    useEffect(() => {
         if (isLoaded.current) return;
         if (connection) {
             connection.on("NewPersonalMessage", (data: MessageDto) => {
@@ -88,40 +94,11 @@ const MessageCard: FC<MessageCardProps> = (props) => {
             });
             isLoaded.current = true;
         }
-        if (conversationId && connection) {
+        if (conversationId) {
             getTheConversation(conversationId);
             getMessagesOfConversation(conversationId, 0, 20);
         }
     }, [conversationId, connection]);
-
-    const sendNotificationWhenSendingMessage = async (): Promise<boolean> => {
-        const newNoti: NotificationDto = {
-            userId: user.id,
-            conversationId: conversationId,
-            description: "Your have a new message",
-            notificationType: NotificationTypes.UnreadMessage,
-            seen: false,
-            link: ""
-        }
-
-        const res = await createNotification(newNoti);
-
-        if (res.isSuccess) {
-            return true;
-        } else {
-            const newNotification: NotificationDto = {
-                id: uuidv4(),
-                userId: user.id,
-                conversationId: conversationId,
-                description: res.errorMessage.toString(),
-                notificationType: NotificationTypes.StandardNotification,
-                seen: false,
-                link: ""
-            }
-            addNewNotifications(newNotification, "error");
-        }
-        return false;
-    }
 
     const handleSendMessage = async (value: string, event?: any) => {
         if (!value) return;
@@ -135,18 +112,15 @@ const MessageCard: FC<MessageCardProps> = (props) => {
 
         const res = await sendMessageToUser(newMessageDto);
         if (res.isSuccess) {
-            const sendStatus = await sendNotificationWhenSendingMessage();
-            if (sendStatus) {
-                const newMessage: MessageDto = {
-                    content: value,
-                    userId: user?.id || "",
-                    isNewMessage: true,
-                    createdDate: new Date(),
-                    updatedDate: new Date()
-                };
-                addMessage(newMessage);
-                setLoading(false);
-            }
+            const newMessage: MessageDto = {
+                content: value,
+                userId: user?.id || "",
+                isNewMessage: true,
+                createdDate: new Date(),
+                updatedDate: new Date()
+            };
+            addMessage(newMessage);
+            setLoading(false);
         } else {
             api.error({
                 message: 'Send Failed',
@@ -173,11 +147,26 @@ const MessageCard: FC<MessageCardProps> = (props) => {
         setMessagesLoading(false);
     }
 
+    const handleWhenClickOnMessageCard = async () => {
+        if (atBottom && unRead) {
+            const res = await updateConversationNotificationsToSeen(conversationId);
+            if (res.isSuccess) {
+                setUnRead(false);
+                if(handleReadConversation) handleReadConversation(conversationId);
+            } else {
+                addNewNotifications(res.errorMessage, "error");
+            }
+        }
+    }
+
     return (
-        <div className="message-card" onClick={() => setUnRead(false)}>
+        <div className="message-card">
             {contextHolder}
             <div className={`title ${unRead ? 'have-message' : ""}`}>
-                <div className='from-user'>
+                <div className='from-user' onClick={() => handleWhenClickOnMessageCard()}>
+                    {conversation?.users.find(u => u.id !== user?.id)?.userName}
+                </div>
+                <div className="close-button">
                     <Button
                         type="text"
                         shape="circle"
@@ -185,7 +174,6 @@ const MessageCard: FC<MessageCardProps> = (props) => {
                         icon={open ? <CaretDownOutlined /> : <CaretUpOutlined />}
                         onClick={() => setOpen(prev => !prev)}
                     />
-                    From: {conversation?.users.find(u => u.id !== user?.id)?.userName}
                 </div>
                 <div className="close-message-action">
                     <Button type="link" danger shape="circle" size='small' icon={<CloseCircleOutlined />}
@@ -194,32 +182,49 @@ const MessageCard: FC<MessageCardProps> = (props) => {
                 </div>
             </div>
             <ScrollToBottom className={open ? "card-body" : "card-body close"} scrollViewClassName='messages' followButtonClassName="scroll-to-bottom">
-                {pagination?.currentPage !== 1 ?
-                    <Button type="link" size="small" loading={messagesLoading} onClick={() => loadMoreMessages()}>
-                        Previous Messages
-                    </Button> : <></>}
-                {
-                    messages.map(ms => (
-                        <Collapse
-                            className={`${renderOutgoingIncomingMessage(ms.userId === user?.id)}`}
-                            items={[{
-                                key: ms.id,
-                                label: <span>{ms.content}</span>,
-                                children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
-                            }]}
-                            expandIcon={() =>
-                                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                    {conversation?.users.find(u => u.id === ms.userId)?.userName}
-                                </Avatar>
-                            }
-                            size="small"
-                            expandIconPosition={ms.userId === user?.id ? "start" : "end"}
-                        />
-                    ))
-                }
+                <StateContext.Consumer>
+                    {({ atBottom }) => {
+                        setAtBottom(atBottom);
+                        return (
+                            <div
+                                onClick={() => handleWhenClickOnMessageCard()}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "5px"
+                                }}>
+                                {
+                                    pagination?.currentPage !== 1 && messages.length ?
+                                        <Button type="link" size="small" loading={messagesLoading} onClick={() => loadMoreMessages()}>
+                                            Previous Messages
+                                        </Button> : <></>
+                                }
+                                {
+                                    messages.map(ms => (
+                                        <Collapse
+                                            className={`${renderOutgoingIncomingMessage(ms.userId === user?.id)}`}
+                                            items={[{
+                                                key: ms.id,
+                                                label: <span>{ms.content}</span>,
+                                                children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
+                                            }]}
+                                            expandIcon={() =>
+                                                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
+                                                    {conversation?.users.find(u => u.id === ms.userId)?.userName}
+                                                </Avatar>
+                                            }
+                                            size="small"
+                                            expandIconPosition={ms.userId === user?.id ? "start" : "end"}
+                                        />
+                                    ))
+                                }
+                            </div>
+                        )
+                    }}
+                </StateContext.Consumer>
 
             </ScrollToBottom>
-            <div className="send-action">
+            <div className="send-action" onClick={() => handleWhenClickOnMessageCard()}>
                 <Search
                     placeholder="Type your messages here"
                     enterButton={<SendOutlined />}

@@ -23,7 +23,6 @@ const App: FC = () => {
   const [isConnected, setConnected] = useState<boolean>(false);
   const [yourTurn, setYourTurn] = useState<boolean>(false);
   const [newGame, setNewGame] = useState<number>(0);
-  const [newMessage, setNewMessage] = useState<NewMessageModel>({index: 0, id: ""});
   const [start, setStart] = useState<boolean>(false);
   const [watchMode, setWatchMode] = useState<boolean>(false);
   const cLoaded = useRef<boolean>(false);
@@ -40,6 +39,7 @@ const App: FC = () => {
   const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
   const [allConversations, setAllConversations] = useState<ConversationDTO[]>([]);
   const [conversationLoading, setConversationLoading] = useState<boolean>(false);
+  const [reloadAllConversations, setReloadAllConversations] = useState<NewMessageModel>({id: "", index: 0});
   const [conversationPage, setConversationPage] = useState<PaginationObject>({
     currentPage: 1,
     totalPages: 0,
@@ -172,29 +172,52 @@ const App: FC = () => {
     if (connection) {
       connection.on("NewNotification", (data: NotificationDto) => {
         addNewNotifications(data, 'info');
+        if (data.conversation) {
+          setReloadAllConversations(prev => ({id: data.conversationId!, index: prev.index + 1}));
+        }
       });
 
       connection.on("NewPersonalMessage", (data: MessageDto) => {
-        setNewMessage(prev => ({index: prev.index + 1, id: data.toUserId!}));
+        handleWhenReceivingNewMessage(data.conversationId!, data.userId!);
       });
     }
   }, [connection]);
 
   useEffect(() => {
-    handleWhenOpeningNewConversation(newMessage.id);
-  }, [newMessage]);
+    if(reloadAllConversations.id) {
+      reloadConversations(reloadAllConversations.id, true);
+    }
+  }, [reloadAllConversations]);
 
-  const getAllConversationsWhenOpen = async () => {
+  const reloadConversations = async (conversationId: string, unRead: boolean) => {
+    const newCons = [...allConversations];
+    let contained = false;
+    for (let index = 0; index < newCons.length; index++) {
+      const element = newCons[index];
+      if (element.id === conversationId) {
+        element.unRead = unRead;
+        contained = true;
+        break;
+      }
+    }
+    if(contained) {
+      setAllConversations(newCons);
+    } else {
+      await getAllConversationsWhenOpen("", 1, newCons.length + 1);
+    }
+  }
+
+  const getAllConversationsWhenOpen = async (search?: string, page?: number, pageSize?: number) => {
     if (conversationLoading) {
       return;
     }
     setConversationLoading(true);
-    const result = await getAllConversations("", 1, 20);
+    const result = await getAllConversations(search || "", page || 1, pageSize || 20);
     if (result.isSuccess && result.responseData.items && result.responseData.items.length) {
       const newData: ConversationDTO[] = [...result.responseData.items];
       setConversationLoading(false);
       setAllConversations(newData);
-      setConversationPage({currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords});
+      setConversationPage({ currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords });
     } else {
       addNewNotifications(result.errorMessage, "error");
       setConversationLoading(false);
@@ -211,37 +234,67 @@ const App: FC = () => {
       const newData: ConversationDTO[] = [...result.responseData.items];
       setConversationLoading(false);
       setAllConversations(prev => [...prev, ...newData]);
-      setConversationPage({currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords});
+      setConversationPage({ currentPage: result.responseData.currentPage, pageSize: result.responseData.pageSize, totalPages: result.responseData.totalPages, totalRecords: result.responseData.totalRecords });
     } else {
       addNewNotifications(result.errorMessage, "error");
       setConversationLoading(false);
     }
   }
 
+  const handleWhenReceivingNewMessage = (conversationId: string, userId: string) => {
+    if (!conversationId || !userId) return;
+    setMessageCards(prev => {
+      const newMcs = [...prev];
+      const currentMC = newMcs.find(c => c.conversationId === conversationId);
+      if (!currentMC) {
+        newMcs.push({
+          conversationId: conversationId,
+          userId: userId,
+          isClosed: false,
+          noti: true
+        });
+      } else {
+        for (let index = 0; index < newMcs.length; index++) {
+          const element = newMcs[index];
+          if (element.conversationId === conversationId) {
+            element.isClosed = false;
+            element.noti = true;
+            break;
+          }
+        }
+      }
+      return newMcs;
+    });
+  }
+
   const handleWhenOpeningNewConversation = async (toUserId: string) => {
+    if (!toUserId) return;
     let newMcs = [...messageCards];
     const currentMC = newMcs.some((c: MessageCardDto) => c.userId === toUserId);
     if (!currentMC) {
       let newMessageCard: MessageCardDto = {
-        conversatioId: "",
-        userId: ""
+        conversationId: "",
+        userId: "",
+        isClosed: false,
+        noti: false
       };
       const res = await getConversationToUser(toUserId);
       if (res.isSuccess) {
         if (res.responseData) {
-          const updateNotiRes = await updateConversationNotificationsToSeen(res.responseData.id);
-          if (!updateNotiRes.isSuccess) {
-            addNewNotifications(updateNotiRes.errorMessage, "error");
-          } else {
-            newMessageCard.conversatioId = res.responseData.id;
-            newMessageCard.userId = toUserId;
-            console.log(messageCards);
-            newMcs.push(newMessageCard);
+          if (res.responseData.unRead) {
+            const updateNotiRes = await updateConversationNotificationsToSeen(res.responseData.id);
+            if (!updateNotiRes.isSuccess) {
+              addNewNotifications(updateNotiRes.errorMessage, "error");
+            }
           }
+          newMessageCard.conversationId = res.responseData.id;
+          newMessageCard.userId = toUserId;
+          newMcs.push(newMessageCard);
         } else {
           const createNewConvRes = await createConversation(toUserId);
           if (createNewConvRes.isSuccess) {
-            newMcs.push({ conversatioId: createNewConvRes.responseData.id, userId: toUserId });
+            newMcs.push({ conversationId: createNewConvRes.responseData.id, userId: toUserId, isClosed: false, noti: false });
+            reloadConversations(createNewConvRes.responseData.id, false);
           } else {
             addNewNotifications(createNewConvRes.errorMessage, "error");
           }
@@ -249,13 +302,18 @@ const App: FC = () => {
       } else {
         addNewNotifications(res.errorMessage, "error");
       }
+    } else {
+      for (let index = 0; index < newMcs.length; index++) {
+        const element = newMcs[index];
+        if (element.userId === toUserId) {
+          element.isClosed = false;
+          element.noti = false;
+          break;
+        }
+      }
     }
-
-    console.log(newMcs);
     setMessageCards(newMcs);
   }
-
-  console.log(messageCards)
 
   const handleCloseErrorMessage = (id: string) => {
     const filteredNotifications = [...notifications].filter(p => p.id !== id);
@@ -312,10 +370,23 @@ const App: FC = () => {
 
   const handleCloseMessageCard = (conversationId: string) => {
     setMessageCards(prev => {
-      const newMCs = [...prev];
-      const returnMCs = newMCs.filter(m => m.conversatioId !== conversationId);
-      return returnMCs;
-    })
+      const newMcs = [...prev];
+      for (let index = 0; index < newMcs.length; index++) {
+        const element = newMcs[index];
+        if (element.conversationId === conversationId) {
+          element.isClosed = true;
+          break;
+        }
+      }
+      return newMcs;
+    });
+  }
+
+  const handleWhenClickOnConversation = (conversation: ConversationDTO) => {
+    const toUserId = conversation.users.find(u => u.id !== user?.id)?.id!;
+    reloadConversations(conversation.id, false);
+    handleWhenOpeningNewConversation(toUserId);
+    setOpenConversationPanel(false);
   }
 
   return (
@@ -348,12 +419,61 @@ const App: FC = () => {
           </div>
 
           <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
-            <Button type="default" shape="circle" size='small' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
+            <Button type="default" shape="circle" size='large' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
           </Badge>
           {user ?
             <Badge count={allConversations.filter(c => c.unRead).length} size='small' style={{ cursor: "pointer" }} >
-              <Button type="default" shape="circle" size='small' icon={<MessageOutlined />} onClick={handleWhenOpenConversationPanel} />
+              <Popover
+                content={
+                  <div
+                    id="scrollableDiv"
+                    style={{
+                      height: 400,
+                      overflow: 'auto',
+                      padding: '0 16px',
+                      border: '1px solid rgba(140, 140, 140, 0.35)',
+                    }}
+                  >
+                    <InfiniteScroll
+                      dataLength={allConversations.length}
+                      next={loadMoreConversation}
+                      hasMore={conversationPage.currentPage < conversationPage.totalPages}
+                      loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
+                      scrollableTarget="scrollableDiv"
+                    >
+                      <List
+                        bordered={false}
+                        dataSource={allConversations}
+                        renderItem={(item) => (
+                          <List.Item
+                            key={item.id}
+                            style={{ border: "none", padding: 12 }}
+                            className={`conversation-li`}
+                            onClick={() => handleWhenClickOnConversation(item)}
+                          >
+                            <List.Item.Meta
+                              avatar={<Avatar src={item.users[0].userName} />}
+                              title={item.users.find(u => u.id !== user?.id)?.userName}
+                              description={item.messages![0]?.content}
+                              className={`conversation-item ${item.unRead ? "unread" : ""}`}
+                            />
+                            <div className='badge'></div>
+                          </List.Item>
+                        )}
+                      />
+                    </InfiniteScroll>
+                  </div>
+                }
+                title="Your Conversation"
+                trigger="click"
+                placement="bottomLeft"
+                open={openConversationPanel}
+                onOpenChange={(value: boolean) => setOpenConversationPanel(value)}
+              >
+                <Button type="default" shape="circle" size='large' icon={<MessageOutlined />} onClick={handleWhenOpenConversationPanel} />
+              </Popover>
             </Badge>
+
             :
             <></>
           }
@@ -418,70 +538,22 @@ const App: FC = () => {
               {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
               {step === 2 ? <RoomList handleWhenOpeningNewConversation={handleWhenOpeningNewConversation} /> : <></>}
               {step === 3 ? <InGame /> : <></>}
-              <Drawer
-                title="Your Conversations"
-                placement="right"
-                width={400}
-                onClose={() => setOpenConversationPanel(false)}
-                open={openConversationPanel}
-              >
-                <div
-                  id="scrollableDiv"
-                  style={{
-                    height: 400,
-                    overflow: 'auto',
-                    padding: '0 16px',
-                    border: '1px solid rgba(140, 140, 140, 0.35)',
-                  }}
-                >
-                  <InfiniteScroll
-                    dataLength={allConversations.length}
-                    next={loadMoreConversation}
-                    hasMore={conversationPage.currentPage < conversationPage.totalPages}
-                    loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
-                    scrollableTarget="scrollableDiv"
-                  >
-                    <List
-                      bordered={false}
-                      dataSource={allConversations}
-                      renderItem={(item) => (
-                        <List.Item
-                          key={item.id}
-                          style={{ border: "none", padding: 12 }}
-                          className={`conversation-li`}
-                          onClick={() => {
-                            handleWhenOpeningNewConversation(item.users.find(u => u.id !== user?.id)?.id!);
-                            setOpenConversationPanel(false);
-                          }}
-                        >
-                          <List.Item.Meta
-                            avatar={<Avatar src={item.users[0].userName} />}
-                            title={item.users.find(u => u.id !== user?.id)?.userName}
-                            description={item.messages![0]?.content}
-                            className={`conversation-item ${item.unRead ? "unread" : ""}`}
-                          />
-                          <div className='badge'></div>
-                        </List.Item>
-                      )}
-                    />
-                  </InfiniteScroll>
-                </div>
-              </Drawer>
             </AppContext.Provider>
         }
         <div className="message-bar">
           {
             messageCards.map(ms => (
-              <MessageCard
-                conversationId={ms.conversatioId}
+              !ms.isClosed ? <MessageCard
+                conversationId={ms.conversationId}
                 handleCloseMessageCard={handleCloseMessageCard}
                 connection={connection} user={user!}
                 addNewNotifications={addNewNotifications}
-              />
+                hasBeenRead={ms.noti}
+                handleReadConversation={(conversationId) => reloadConversations(conversationId, false)}
+              /> : <></>
             ))
           }
         </div>
-
       </div >
       <Drawer
         title="Notifications"

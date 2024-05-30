@@ -169,6 +169,10 @@
 
 .from-user {
   width: 100%;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .close-message-action {
@@ -193,7 +197,7 @@
   }
 }
 
-.message-card>.card-body {
+.message-card .card-body {
   background-color: rgb(255, 255, 255);
   height: 300px;
   transition: height 0.3s ease-in-out;
@@ -213,9 +217,6 @@
 }
 
 .messages {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
   padding: 5px;
   border-radius: 6.5px;
   width: 240px !important;
@@ -309,6 +310,7 @@
 #scrollableDiv {
   border: none !important;
   height: 100% !important;
+  width: 300px;
 }
 
 .conversation-li {

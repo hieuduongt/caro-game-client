@@ -102,7 +102,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'userName',
             key: 'userName',
-            render: (text) => <a href="#">{text}</a>,
+            render: (text) => <Tooltip placement="topLeft" title={text}><a href="#" className="user-name">{text}</a></Tooltip>,
             sorter: (a, b) => {
                 if (a.userName < b.userName) {
                     return -1;

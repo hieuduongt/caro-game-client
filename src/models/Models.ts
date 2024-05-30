@@ -16,8 +16,10 @@ export interface NotificationMessage {
 }
 
 export interface MessageCardDto {
-    conversatioId: string;
+    conversationId: string;
     userId: string;
+    isClosed: boolean;
+    noti: boolean;
 }
 
 export interface RegisterDTO {
@@ -58,6 +60,11 @@ export enum AccountStatus {
     Active,
     Inactive,
     Banned
+}
+
+export interface TokenDto {
+    accessToken: string;
+    refreshToken: string
 }
 
 export interface RoomDTO {
