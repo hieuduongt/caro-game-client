@@ -52,7 +52,7 @@ export const post = async<T>(url: string, data?: any): Promise<ResponseData<T>> 
         if(error.response?.status === 401) {
             const reAuthenRes = await reAuthenWithRefreshToken();
             if(reAuthenRes) {
-                return await get(url, data);
+                return await post<T>(url, data);
             }
         }
         const result: ResponseData<any> = {
@@ -85,7 +85,7 @@ export const get = async<T>(url: string, data?: any): Promise<ResponseData<T>> =
         if(error.response?.status === 401) {
             const reAuthenRes = await reAuthenWithRefreshToken();
             if(reAuthenRes) {
-                return await get(url, data);
+                return await get<T>(url, data);
             }
         }
         const result: ResponseData<any> = {
@@ -118,7 +118,7 @@ export const put = async<T>(url: string, data: any): Promise<ResponseData<T>> =>
         if(error.response?.status === 401) {
             const reAuthenRes = await reAuthenWithRefreshToken();
             if(reAuthenRes) {
-                return await put(url, data);
+                return await put<T>(url, data);
             }
         }
         const result: ResponseData<any> = {
@@ -151,7 +151,7 @@ export const deleteR = async<T>(url: string, data?: any): Promise<ResponseData<T
         if(error.response?.status === 401) {
             const reAuthenRes = await reAuthenWithRefreshToken();
             if(reAuthenRes) {
-                return await deleteR(url, data);
+                return await deleteR<T>(url, data);
             }
         }
         const result: ResponseData<any> = {

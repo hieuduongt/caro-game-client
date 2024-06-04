@@ -9,13 +9,14 @@ import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, generateShortUserName, getAuthToken, getTokenProperties, isExpired, removeAuthToken } from './helpers/Helper';
+import { EnvEnpoint, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
-import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto, PaginationObject, NewMessageModel } from './models/Models';
+import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto, PaginationObject, NewMessageModel, TokenDto } from './models/Models';
 import { createConversation, getAllConversations, getConversationToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
 import MessageCard from './components/MessageCard/MessageCard';
+import { authenticateUsingRefreshToken } from './services/AuthServices';
 
 const App: FC = () => {
   const [api, contextHolder] = notification.useNotification();
@@ -39,7 +40,7 @@ const App: FC = () => {
   const [openConversationPanel, setOpenConversationPanel] = useState<boolean>(false);
   const [allConversations, setAllConversations] = useState<ConversationDTO[]>([]);
   const [conversationLoading, setConversationLoading] = useState<boolean>(false);
-  const [reloadAllConversations, setReloadAllConversations] = useState<NewMessageModel>({id: "", index: 0});
+  const [reloadAllConversations, setReloadAllConversations] = useState<NewMessageModel>({ id: "", index: 0 });
   const [conversationPage, setConversationPage] = useState<PaginationObject>({
     currentPage: 1,
     totalPages: 0,
@@ -49,21 +50,32 @@ const App: FC = () => {
 
   const checkIsLoggedIn = async (): Promise<void> => {
     setLoading(true);
-    const token = getAuthToken();
-    if (token) {
+    const accessToken = getAuthToken();
+    if (accessToken) {
       const isExp = isExpired();
       if (isExp) {
-        removeAuthToken();
-        setRedirectToLogin(true);
-        setStep(1);
-        setLoading(false);
+        const oldTokens: TokenDto = {
+          accessToken: getAuthToken(),
+          refreshToken: getRefreshToken()
+        }
+        const newTokenRes = await authenticateUsingRefreshToken(oldTokens);
+        if (newTokenRes.isSuccess) {
+          setAuthToken(newTokenRes.responseData.accessToken);
+          setRefreshToken(newTokenRes.responseData.refreshToken);
+          await connectToGameHub();
+        } else {
+          removeAuthToken();
+          removeRefreshToken();
+          setRedirectToLogin(true);
+          setStep(1);
+        }
       } else {
         await connectToGameHub();
       }
     } else {
       setStep(1);
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   const connectToGameHub = async () => {
@@ -173,18 +185,38 @@ const App: FC = () => {
       connection.on("NewNotification", (data: NotificationDto) => {
         addNewNotifications(data, 'info');
         if (data.conversation) {
-          setReloadAllConversations(prev => ({id: data.conversationId!, index: prev.index + 1}));
+          setReloadAllConversations(prev => ({ id: data.conversationId!, index: prev.index + 1 }));
         }
       });
 
       connection.on("NewPersonalMessage", (data: MessageDto) => {
         handleWhenReceivingNewMessage(data.conversationId!, data.userId!);
       });
+
+      connection.onclose(async () => {
+        const oldTokens: TokenDto = {
+          accessToken: getAuthToken(),
+          refreshToken: getRefreshToken()
+        }
+
+        const newTokenRes = await authenticateUsingRefreshToken(oldTokens);
+
+        if (newTokenRes.isSuccess) {
+          setAuthToken(newTokenRes.responseData.accessToken);
+          setRefreshToken(newTokenRes.responseData.refreshToken);
+          await connection.start();
+        } else {
+          removeAuthToken();
+          removeRefreshToken();
+          setRedirectToLogin(true);
+          setStep(1);
+        }
+      });
     }
   }, [connection]);
 
   useEffect(() => {
-    if(reloadAllConversations.id) {
+    if (reloadAllConversations.id) {
       reloadConversations(reloadAllConversations.id, true);
     }
   }, [reloadAllConversations]);
@@ -200,7 +232,7 @@ const App: FC = () => {
         break;
       }
     }
-    if(contained) {
+    if (contained) {
       setAllConversations(newCons);
     } else {
       await getAllConversationsWhenOpen("", 1, newCons.length + 1);
@@ -395,12 +427,12 @@ const App: FC = () => {
         <div className="header">
           <div className="author">
             <div>
-              <Avatar src={<img src="app-logo.PNG" style={{ width: "100%", height: "100%" }} />} style={{ verticalAlign: 'middle', boxShadow: "rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }} size={40} />
+              <Avatar src={<img src="app-logo.PNG" alt='app-logo' style={{ width: "100%", height: "100%" }} />} style={{ verticalAlign: 'middle', boxShadow: "rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }} size={40} />
             </div>
 
             <div className="link-to">
               Powered by
-              <a href="https://www.hieuduongit.com/" target='_blank'> HieuduongIT.com</a>
+              <a href="https://www.hieuduongit.com/" target='_blank' rel="noreferrer"> HieuduongIT.com</a>
             </div>
           </div>
           <div className="notifications">
@@ -499,7 +531,7 @@ const App: FC = () => {
             </div>
               :
               <div className='profile'>
-                <Avatar src={<img src="favicon.png" style={{ width: "100%", height: "100%" }} />} size={40} style={{ verticalAlign: 'middle' }} />
+                <Avatar src={<img src="favicon.png" alt='profile' style={{ width: "100%", height: "100%" }} />} size={40} style={{ verticalAlign: 'middle' }} />
               </div>
           }
 
