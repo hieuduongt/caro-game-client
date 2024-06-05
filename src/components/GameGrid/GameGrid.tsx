@@ -109,10 +109,8 @@ const GameGrid: FC<GameGridProps> = (props) => {
             switchTurn(data);
         });
 
-        connection.on("UpdateGameData", (matchId: string) => {
-            if(!user.isPlaying) {
-                getCoordinates(matchId);
-            }
+        connection.on("UpdateGameData", (data: Coordinates) => {
+            updateGameBoard(data.x, data.y, data.userId, data.player, data.id, true);
         });
 
         connection.on("MatchResponseForLoser", async (matchId: string): Promise<void> => {
@@ -129,9 +127,7 @@ const GameGrid: FC<GameGridProps> = (props) => {
         });
 
         connection.on("MatchFinishResponseForInRoomMembers", async (matchId: string): Promise<void> => {
-            if(!user.isPlaying) {
-                getCoordinates(matchId);
-            }
+            getCoordinates(matchId);
         });
     }, []);
 

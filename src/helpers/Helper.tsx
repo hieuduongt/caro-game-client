@@ -159,6 +159,19 @@ const removeAuthToken = (): void => {
     localStorage.removeItem('authToken');
 };
 
+const getRefreshToken = (): string => {
+    const tokenString = localStorage.getItem('refreshToken');
+    return tokenString || "";
+};
+
+const setRefreshToken = (authToken: string): void => {
+    localStorage.setItem('refreshToken', authToken);
+};
+
+const removeRefreshToken = (): void => {
+    localStorage.removeItem('refreshToken');
+};
+
 const getTokenProperties = (name?: "exp" | "role" | "nameidentifier" | "name"): any => {
     const token = getAuthToken();
 
@@ -214,4 +227,19 @@ const isExpired = (): boolean => {
     return false;
 }
 
-export { setAuthToken, getAuthToken, getTokenProperties, compareRole, removeAuthToken, isExpired, checkWinner, EnvEnpoint, generateShortUserName, formatUTCDateToLocalDate, isNotificationDto }
+export { 
+    setAuthToken, 
+    getAuthToken, 
+    getTokenProperties, 
+    compareRole, 
+    removeAuthToken, 
+    isExpired, 
+    checkWinner, 
+    EnvEnpoint, 
+    generateShortUserName, 
+    formatUTCDateToLocalDate, 
+    isNotificationDto,
+    getRefreshToken,
+    setRefreshToken,
+    removeRefreshToken
+}

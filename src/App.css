@@ -20,8 +20,13 @@
 
 .container {
   margin: auto;
-  margin-top: 20px;
   max-width: 1280px;
+  min-width: 350px;
+}
+
+#root {
+  margin-top: 80px;
+  margin-bottom: 20px;
 }
 
 @media only screen and (max-width: 1280px) {
@@ -42,16 +47,26 @@
   }
 }
 
-.header {
-  /* box-shadow: rgba(33, 35, 38, 0.2) 0px 10px 10px -10px; */
+.header-panel {
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
-  min-height: 50px;
+  min-height: 60px;
   background-color: rgba(255, 255, 255, 0.466);
   backdrop-filter: blur(30px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+.header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px;
+  margin: 10px;
+  width: 100%;
 }
 
 .author {
@@ -77,6 +92,14 @@
 
 .notifications {
   width: 100%;
+  position: relative;
+}
+
+.notification-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .list-errors {
@@ -109,7 +132,7 @@
   background-color: rgba(255, 255, 255, 0.4);
 }
 
-.message-queue {
+.message-bar {
   position: fixed;
   bottom: 0;
   right: 0;
@@ -122,15 +145,18 @@
   margin-left: 20px;
   z-index: 999;
   gap: 20px;
+  height: 0px;
 }
 
 .message-card {
   min-width: 260px;
   width: 260px;
   min-height: 100px;
-  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
+  transition: transform 0.3s ease-in-out;
+  background-color: rgb(255, 255, 255);
 }
 
 .message-card>.title {
@@ -144,6 +170,10 @@
 
 .from-user {
   width: 100%;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .close-message-action {
@@ -168,11 +198,7 @@
   }
 }
 
-.message-card {
-  transition: transform 0.3s ease-in-out;
-}
-
-.message-card>.card-body {
+.message-card .card-body {
   background-color: rgb(255, 255, 255);
   height: 300px;
   transition: height 0.3s ease-in-out;
@@ -192,16 +218,13 @@
 }
 
 .messages {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
   padding: 5px;
   border-radius: 6.5px;
   width: 240px !important;
   height: 290px !important;
 }
 
-.messages>.incomming-message {
+.incomming-message {
   background-color: #d8d8d8;
   width: fit-content;
   border-top-left-radius: 10px;
@@ -220,7 +243,7 @@
   hyphens: auto;
 }
 
-.messages>.outgoing-message {
+.outgoing-message {
   background-color: #53d1ec;
   color: white;
   width: fit-content;
@@ -288,6 +311,7 @@
 #scrollableDiv {
   border: none !important;
   height: 100% !important;
+  width: 300px;
 }
 
 .conversation-li {
@@ -334,4 +358,12 @@
 
 .conversation-li>.conversation-item.unread+.badge {
   display: block;
+}
+
+button.scroll-to-bottom::after {
+  content: "\25BC";
+  position: absolute;
+  top: 3.5px;
+  left: 3px;
+  transform: scale(0.8, 0.65);
 }

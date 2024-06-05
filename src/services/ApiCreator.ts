@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
-import { ResponseData } from "../models/Models";
-import { getAuthToken } from "../helpers/Helper";
+import { ResponseData, TokenDto } from "../models/Models";
+import { getAuthToken, getRefreshToken, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from "../helpers/Helper";
+import { authenticateUsingRefreshToken } from "./AuthServices";
 
 const createHeader = (): any => {
     return {
@@ -11,7 +12,28 @@ const createHeader = (): any => {
     }
 }
 
-export const post = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+const reAuthenWithRefreshToken = async (): Promise<boolean> => {
+    const token: TokenDto = {
+        accessToken: getAuthToken(),
+        refreshToken: getRefreshToken()
+    }
+    try {
+        const res = await authenticateUsingRefreshToken(token);
+        if (res.code === 200 && res.isSuccess && res.responseData) {
+            setAuthToken(res.responseData.accessToken);
+            setRefreshToken(res.responseData.refreshToken);
+            return true;
+        } else {
+            removeAuthToken();
+            removeRefreshToken();
+            return false;
+        }
+    } catch (ex: any) {
+        return false;
+    }
+}
+
+export const post = async<T>(url: string, data?: any): Promise<ResponseData<T>> => {
     const apiCaller = axios.create(createHeader());
     try {
         const res = await apiCaller.post<ResponseData<T>>(url, data);
@@ -28,6 +50,12 @@ export const post = async<T> (url: string, data?: any): Promise<ResponseData<T>>
         }
     } catch (ex: any) {
         const error = ex as AxiosError;
+        if(error.response?.status === 401) {
+            const reAuthenRes = await reAuthenWithRefreshToken();
+            if(reAuthenRes) {
+                return await post<T>(url, data);
+            }
+        }
         const result: ResponseData<any> = {
             code: error.response?.status || 500,
             errorMessage: [error.message],
@@ -38,7 +66,7 @@ export const post = async<T> (url: string, data?: any): Promise<ResponseData<T>>
     }
 }
 
-export const get = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+export const get = async<T>(url: string, data?: any): Promise<ResponseData<T>> => {
     const apiCaller = axios.create(createHeader());
     try {
         const res = await apiCaller.get<ResponseData<T>>(url, data!);
@@ -49,12 +77,18 @@ export const get = async<T> (url: string, data?: any): Promise<ResponseData<T>> 
                 code: res.status,
                 errorMessage: ["Cannot send your request"],
                 isSuccess: false,
-                responseData: undefined
+                responseData: null
             }
             return result;
         }
     } catch (ex: any) {
         const error = ex as AxiosError;
+        if(error.response?.status === 401) {
+            const reAuthenRes = await reAuthenWithRefreshToken();
+            if(reAuthenRes) {
+                return await get<T>(url, data);
+            }
+        }
         const result: ResponseData<any> = {
             code: error.response?.status || 500,
             errorMessage: [error.message],
@@ -65,7 +99,7 @@ export const get = async<T> (url: string, data?: any): Promise<ResponseData<T>> 
     }
 }
 
-export const put = async<T> (url: string, data: any): Promise<ResponseData<T>> => {
+export const put = async<T>(url: string, data: any): Promise<ResponseData<T>> => {
     const apiCaller = axios.create(createHeader());
     try {
         const res = await apiCaller.put<ResponseData<T>>(url, data);
@@ -82,6 +116,12 @@ export const put = async<T> (url: string, data: any): Promise<ResponseData<T>> =
         }
     } catch (ex: any) {
         const error = ex as AxiosError;
+        if(error.response?.status === 401) {
+            const reAuthenRes = await reAuthenWithRefreshToken();
+            if(reAuthenRes) {
+                return await put<T>(url, data);
+            }
+        }
         const result: ResponseData<any> = {
             code: error.response?.status || 500,
             errorMessage: [error.message],
@@ -92,7 +132,7 @@ export const put = async<T> (url: string, data: any): Promise<ResponseData<T>> =
     }
 }
 
-export const deleteR = async<T> (url: string, data?: any): Promise<ResponseData<T>> => {
+export const deleteR = async<T>(url: string, data?: any): Promise<ResponseData<T>> => {
     const apiCaller = axios.create(createHeader());
     try {
         const res = await apiCaller.delete<ResponseData<T>>(url, data);
@@ -109,6 +149,12 @@ export const deleteR = async<T> (url: string, data?: any): Promise<ResponseData<
         }
     } catch (ex: any) {
         const error = ex as AxiosError;
+        if(error.response?.status === 401) {
+            const reAuthenRes = await reAuthenWithRefreshToken();
+            if(reAuthenRes) {
+                return await deleteR<T>(url, data);
+            }
+        }
         const result: ResponseData<any> = {
             code: error.response?.status || 500,
             errorMessage: [error.message],

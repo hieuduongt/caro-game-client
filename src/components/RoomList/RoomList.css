@@ -37,6 +37,7 @@
         margin-left: 0 !important;
         margin-top: 10px;
     }
+
     .input-search-user {
         max-width: 100% !important;
         margin-left: 0 !important;
@@ -62,4 +63,11 @@
 
 .input-search-user {
     max-width: 350px;
+}
+
+.user-name {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

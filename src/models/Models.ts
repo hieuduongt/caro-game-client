@@ -4,10 +4,22 @@ export interface LoginDTO {
     password: string;
 }
 
+export interface NewMessageModel {
+    index: number;
+    id: string;
+}
+
 export interface NotificationMessage {
     id: string;
     content: string;
     type: "success" | "info" | "warning" | "error";
+}
+
+export interface MessageCardDto {
+    conversationId: string;
+    userId: string;
+    isClosed: boolean;
+    noti: boolean;
 }
 
 export interface RegisterDTO {
@@ -32,6 +44,13 @@ export interface Pagination<T> {
     totalRecords: number;
 }
 
+export interface PaginationObject {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalRecords: number;
+}
+
 export enum Status {
     Available,
     Unavailable
@@ -43,6 +62,11 @@ export enum AccountStatus {
     Banned
 }
 
+export interface TokenDto {
+    accessToken: string;
+    refreshToken: string
+}
+
 export interface RoomDTO {
     id: string;
     name: string;
@@ -51,6 +75,7 @@ export interface RoomDTO {
     numberOfUsers?: number;
     members?: UserDTO[];
     matchs?: MatchDTO[];
+    conversation: ConversationDTO;
 }
 
 export interface UserDTO {
@@ -79,10 +104,7 @@ export interface RoleDTO {
 
 export interface ConversationDTO {
     id: string;
-    open: boolean;
     users: UserDTO[];
-    fromUserId?: string;
-    toUserId?: string;
     messages: MessageDto[];
     unRead?: boolean;
 }
@@ -90,6 +112,7 @@ export interface ConversationDTO {
 export interface MessageDto {
     id?: string;
     content: string;
+    userName?: string;
     userId?: string;
     toUserId?: string;
     roomId?: string;
@@ -97,7 +120,6 @@ export interface MessageDto {
     createdDate?: Date;
     conversationId?: string;
     conversation?: ConversationDTO;
-    isMyMessage: boolean;
     isNewMessage?: boolean;
 }
 

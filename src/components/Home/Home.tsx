@@ -3,7 +3,7 @@ import { Button, Flex, Form, Input, Modal, Checkbox, notification } from 'antd';
 import { LoginOutlined, UserAddOutlined, RobotOutlined } from '@ant-design/icons';
 import './Home.css';
 import { login, register } from "../../services/AuthServices";
-import { setAuthToken } from "../../helpers/Helper";
+import { setAuthToken, setRefreshToken } from "../../helpers/Helper";
 import { AppContext } from "../../helpers/Context";
 import { SystemString } from "../../common/StringHelper";
 
@@ -37,9 +37,10 @@ const Home: FC<HomeProps> = (props) => {
             .then(async (values) => {
                 setLoggingIn(true);
                 const result = await login(values);
-                if (result.code === 200 && result.isSuccess) {
+                if (result.isSuccess && result.responseData) {
                     loginForm.resetFields();
-                    setAuthToken(result.responseData);
+                    setAuthToken(result.responseData.accessToken);
+                    setRefreshToken(result.responseData.refreshToken);
                     await connectToGameHub();
                 } else {
                     for (let it of result.errorMessage) {
@@ -89,7 +90,6 @@ const Home: FC<HomeProps> = (props) => {
                 }
             })
             .catch((info) => {
-                console.log(info)
                 addNewNotifications(SystemString.ValidationError, "error");
                 setRegistering(false);
             });
