@@ -145,6 +145,7 @@
   margin-left: 20px;
   z-index: 999;
   gap: 20px;
+  height: 0px;
 }
 
 .message-card {
@@ -359,7 +360,7 @@
   display: block;
 }
 
-.card-body>button.scroll-to-bottom::after {
+button.scroll-to-bottom::after {
   content: "\25BC";
   position: absolute;
   top: 3.5px;

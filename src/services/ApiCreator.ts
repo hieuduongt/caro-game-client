@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { ResponseData, TokenDto } from "../models/Models";
-import { EnvEnpoint, getAuthToken, getRefreshToken, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from "../helpers/Helper";
+import { getAuthToken, getRefreshToken, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from "../helpers/Helper";
+import { authenticateUsingRefreshToken } from "./AuthServices";
 
 const createHeader = (): any => {
     return {
@@ -17,10 +18,10 @@ const reAuthenWithRefreshToken = async (): Promise<boolean> => {
         refreshToken: getRefreshToken()
     }
     try {
-        const res = await axios.post<ResponseData<TokenDto>>(`${EnvEnpoint()}/api/Authenticate/login-refresh-token`, token);
-        if (res.status === 200 && res.data.isSuccess && res.data.responseData) {
-            setAuthToken(res.data.responseData.accessToken);
-            setRefreshToken(res.data.responseData.refreshToken);
+        const res = await authenticateUsingRefreshToken(token);
+        if (res.code === 200 && res.isSuccess && res.responseData) {
+            setAuthToken(res.responseData.accessToken);
+            setRefreshToken(res.responseData.refreshToken);
             return true;
         } else {
             removeAuthToken();

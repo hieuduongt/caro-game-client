@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
-import { notification, Spin, Popover, Button, Avatar, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
+import { notification, message, Spin, Popover, Button, Avatar, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
 import { LoadingOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
@@ -16,10 +16,11 @@ import { createConversation, getAllConversations, getConversationToUser } from '
 import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
 import MessageCard from './components/MessageCard/MessageCard';
-import { authenticateUsingRefreshToken } from './services/AuthServices';
+import { access, authenticateUsingRefreshToken } from './services/AuthServices';
 
 const App: FC = () => {
-  const [api, contextHolder] = notification.useNotification();
+  const [messageApi, messageContextHolder] = message.useMessage();
+  const [api, notiContextHolder] = notification.useNotification();
   const [loading, setLoading] = useState<boolean>(false);
   const [isConnected, setConnected] = useState<boolean>(false);
   const [yourTurn, setYourTurn] = useState<boolean>(false);
@@ -48,32 +49,47 @@ const App: FC = () => {
     totalRecords: 0
   });
 
-  const checkIsLoggedIn = async (): Promise<void> => {
-    setLoading(true);
-    const accessToken = getAuthToken();
-    if (accessToken) {
-      const isExp = isExpired();
-      if (isExp) {
-        const oldTokens: TokenDto = {
-          accessToken: getAuthToken(),
-          refreshToken: getRefreshToken()
-        }
-        const newTokenRes = await authenticateUsingRefreshToken(oldTokens);
-        if (newTokenRes.isSuccess) {
-          setAuthToken(newTokenRes.responseData.accessToken);
-          setRefreshToken(newTokenRes.responseData.refreshToken);
-          await connectToGameHub();
+  const checkAndGetAccessToken = async (): Promise<boolean> => {
+    const accessibleRes = await access();
+    if (accessibleRes.isSuccess) {
+      const accessToken = getAuthToken();
+      if (accessToken) {
+        const isExp = isExpired();
+        if (isExp) {
+          const oldTokens: TokenDto = {
+            accessToken: getAuthToken(),
+            refreshToken: getRefreshToken()
+          }
+          const newTokenRes = await authenticateUsingRefreshToken(oldTokens);
+          if (newTokenRes.isSuccess) {
+            setAuthToken(newTokenRes.responseData.accessToken);
+            setRefreshToken(newTokenRes.responseData.refreshToken);
+            return true;
+          } else {
+            removeAuthToken();
+            removeRefreshToken();
+            setRedirectToLogin(true);
+            setStep(1);
+            return false;
+          }
         } else {
-          removeAuthToken();
-          removeRefreshToken();
-          setRedirectToLogin(true);
-          setStep(1);
+          return true;
         }
       } else {
-        await connectToGameHub();
+        setStep(1);
+        return false;
       }
     } else {
-      setStep(1);
+      addNewNotifications("The server is now unavailable, please try again later!", 'warning');
+      return false;
+    }
+  }
+
+  const checkIsLoggedIn = async (): Promise<void> => {
+    setLoading(true);
+    const canAccess = await checkAndGetAccessToken();
+    if (canAccess) {
+      await connectToGameHub();
     }
     setLoading(false);
   }
@@ -81,7 +97,15 @@ const App: FC = () => {
   const connectToGameHub = async () => {
     const hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${EnvEnpoint()}/connection/hub/game`, {
-        accessTokenFactory: () => getAuthToken(),
+        accessTokenFactory: async () => {
+          messageApi.open({
+            type: "loading",
+            content: 'Connecting to the server...',
+            duration: 10
+          });
+          const isTokenValid = await checkAndGetAccessToken();
+          return isTokenValid ? getAuthToken() : ""
+        },
         skipNegotiation: true,
         transport: signalR.HttpTransportType.WebSockets,
         withCredentials: true
@@ -90,15 +114,21 @@ const App: FC = () => {
       .configureLogging(signalR.LogLevel.Debug)
       .build();
     hubConnection.start().then(async () => {
+      messageApi.destroy();
+      messageApi.open({
+        type: "success",
+        content: 'Connected to the server',
+        duration: 3
+      });
       setConnection(hubConnection);
       setConnected(true);
       await getAllConversationsWhenOpen();
     }).catch((error) => {
+      messageApi.destroy();
       api.error({
-        message: 'Connect Failed',
-        description: SystemString.CannotConnectToServer,
+        message: 'SystemString.CannotConnectToServer',
         duration: -1,
-        placement: "top"
+        placement: "topRight"
       });
       const newNotification: NotificationDto = {
         id: uuidv4(),
@@ -193,24 +223,13 @@ const App: FC = () => {
         handleWhenReceivingNewMessage(data.conversationId!, data.userId!);
       });
 
-      connection.onclose(async () => {
-        const oldTokens: TokenDto = {
-          accessToken: getAuthToken(),
-          refreshToken: getRefreshToken()
-        }
-
-        const newTokenRes = await authenticateUsingRefreshToken(oldTokens);
-
-        if (newTokenRes.isSuccess) {
-          setAuthToken(newTokenRes.responseData.accessToken);
-          setRefreshToken(newTokenRes.responseData.refreshToken);
-          await connection.start();
-        } else {
-          removeAuthToken();
-          removeRefreshToken();
-          setRedirectToLogin(true);
-          setStep(1);
-        }
+      connection.onreconnected(() => {
+        messageApi.destroy();
+        messageApi.open({
+          content: 'Connected to the server',
+          duration: 3,
+          type: "success"
+        });
       });
     }
   }, [connection]);
@@ -396,10 +415,6 @@ const App: FC = () => {
     }
   }
 
-  const handleWhenOpenConversationPanel = () => {
-    setOpenConversationPanel(true);
-  }
-
   const handleCloseMessageCard = (conversationId: string) => {
     setMessageCards(prev => {
       const newMcs = [...prev];
@@ -502,7 +517,7 @@ const App: FC = () => {
                 open={openConversationPanel}
                 onOpenChange={(value: boolean) => setOpenConversationPanel(value)}
               >
-                <Button type="default" shape="circle" size='large' icon={<MessageOutlined />} onClick={handleWhenOpenConversationPanel} />
+                <Button type="default" shape="circle" size='large' icon={<MessageOutlined />} />
               </Popover>
             </Badge>
 
@@ -539,7 +554,8 @@ const App: FC = () => {
       </div>
 
       <div className='container'>
-        {contextHolder}
+        {notiContextHolder}
+        {messageContextHolder}
         {
           loading ? <Spin indicator={<LoadingOutlined style={{ fontSize: 50 }} spin />} fullscreen /> :
             <AppContext.Provider value={{

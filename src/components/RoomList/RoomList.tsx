@@ -102,7 +102,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'userName',
             key: 'userName',
-            render: (text) => <Tooltip placement="topLeft" title={text}><a href="#" className="user-name">{text}</a></Tooltip>,
+            render: (text) => <Tooltip placement="top" title={text}><Button type="link" className="user-name">{text}</Button></Tooltip>,
             sorter: (a, b) => {
                 if (a.userName < b.userName) {
                     return -1;
@@ -271,7 +271,6 @@ const RoomList: FC<RoomListProps> = (props) => {
     }
 
     const handleJoin = async (room: RoomDTO): Promise<void> => {
-
         const res = await joinRoom(room.id);
         if (res.isSuccess) {
             const currentRoomRes = await getRoom(room.id);

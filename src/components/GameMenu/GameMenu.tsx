@@ -28,6 +28,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
     const [competitorTime, setCompetitorTime] = useState<number>(0);
     const cLoaded = useRef<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
+    const [form] = Form.useForm();
 
     const getRoomInfo = async (): Promise<void> => {
         const currentRoom = await getRoomOfCurrentUser();
@@ -88,6 +89,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         if (cLoaded.current) return;
         if (!roomInfo) {
             getRoomInfo();
+        } else {
+            getRoomMessages(roomInfo.id);
         }
         if (!user) {
             getUserInfo();
@@ -217,9 +220,11 @@ const GameMenu: FC<GameMenuProps> = (props) => {
         const res = await sendMessageToGroup(newMessage);
         if (res.isSuccess) {
             addGroupMessage(message, user.id);
+            form.resetFields();
         } else {
             addNewNotifications(res.errorMessage, "error");
         }
+
     };
 
     type FieldType = {
@@ -341,7 +346,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </div>
                         <div className='competition-history-info'>
                             <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs || "0"}</div>
-                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.winMatchs || "0"}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => m.isRoomOwner)?.loseMatchs || "0"}</div>
                         </div>
                     </div>
                 </div>
@@ -364,8 +369,8 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                             <div className='player-name'>{roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.userName}</div>
                         </div>
                         <div className='competition-history-info'>
-                            <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs||"0"}</div>
-                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.numberOfMatchs - roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs || "0"}</div>
+                            <div className='number-of-wins'>Wins: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.winMatchs || "0"}</div>
+                            <div className='number-of-losses'>Losses: {roomInfo?.members?.find((m: UserDTO) => !m.isRoomOwner && m.sitting)?.loseMatchs || "0"}</div>
                         </div>
                     </div>
                 </div>
@@ -375,7 +380,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 </div>
                 <div className='chat-content'>
                     <div className='chat-messages'>
-                        <ScrollToBottom scrollViewClassName='group-message'>
+                        <ScrollToBottom scrollViewClassName='group-message' followButtonClassName="scroll-to-bottom">
                             {
                                 messages?.map(ms => (
                                     <Collapse
@@ -386,9 +391,12 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                                             children: <span>Sent at {formatUTCDateToLocalDate(ms.updatedDate!)}</span>
                                         }]}
                                         expandIcon={() =>
-                                            <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
-                                                {roomInfo.members!.find((u: UserDTO) => u.id === ms.userId)?.userName}
-                                            </Avatar>
+                                            <Tooltip title={ms.userId === user?.id ? "You" : ms.userName} placement="top">
+                                                <Avatar style={{ verticalAlign: 'middle', cursor: "pointer" }} size={20} gap={2}>
+                                                    {ms.userName}
+                                                </Avatar>
+                                            </Tooltip>
+
                                         }
                                         size="small"
                                         expandIconPosition={ms.userId === user?.id ? "start" : "end"}
@@ -400,6 +408,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                 </div>
                 <div className='chat-input'>
                     <Form
+                        form={form}
                         name="basic"
                         style={{ width: "100%" }}
                         onFinish={handleSendGroupMessage}

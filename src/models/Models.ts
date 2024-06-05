@@ -112,6 +112,7 @@ export interface ConversationDTO {
 export interface MessageDto {
     id?: string;
     content: string;
+    userName?: string;
     userId?: string;
     toUserId?: string;
     roomId?: string;
