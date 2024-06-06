@@ -10,11 +10,12 @@ import { SystemString } from "../../common/StringHelper";
 interface HomeProps extends React.HTMLAttributes<HTMLDivElement> {
     redirectToLogin?: boolean;
     connectToGameHub: () => Promise<void>;
+    playAsGuest: () => Promise<void>;
 }
 
 const Home: FC<HomeProps> = (props) => {
     const { addNewNotifications } = useContext(AppContext);
-    const { redirectToLogin, connectToGameHub } = props;
+    const { redirectToLogin, connectToGameHub, playAsGuest } = props;
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
     const [registerForm] = Form.useForm();
@@ -49,7 +50,7 @@ const Home: FC<HomeProps> = (props) => {
                             description: it,
                             duration: -1,
                             placement: "top"
-                        })
+                        });
                     }
                     addNewNotifications(result.errorMessage, "error");
                     setLoggingIn(false);
@@ -93,15 +94,6 @@ const Home: FC<HomeProps> = (props) => {
                 addNewNotifications(SystemString.ValidationError, "error");
                 setRegistering(false);
             });
-    }
-
-    const playAsGuest = () => {
-        api.info({
-            message: 'Not Support Features',
-            description: "This feature is under developed and not release yet, so to play, please register the account and login into system to play with other players!",
-            duration: -1,
-            placement: "top"
-        });
     }
 
     return (

@@ -21,7 +21,7 @@ interface GameMenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GameMenu: FC<GameMenuProps> = (props) => {
-    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewNotifications } = useContext(AppContext);
+    const { connection, roomInfo, setRoomInfo, user, setUser, start, setStart, setStep, setYourTurn, newGame, setNewGame, setMatchInfo, watchMode, setWatchMode, addNewNotifications, isGuest } = useContext(AppContext);
     const [messages, setMessages] = useState<MessageDto[]>();
     const [sitted, setSitted] = useState<boolean>(false);
     const [roomOwnerTime, setRoomOwnerTime] = useState<number>(0);
@@ -406,7 +406,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                         </ScrollToBottom>
                     </div>
                 </div>
-                <div className='chat-input'>
+                {!isGuest ? <div className='chat-input'>
                     <Form
                         form={form}
                         name="basic"
@@ -426,7 +426,7 @@ const GameMenu: FC<GameMenuProps> = (props) => {
                             } />
                         </Form.Item>
                     </Form>
-                </div>
+                </div> : <></>}
                 <div className="users-in-room">
                     <div style={{ fontSize: 12 }}>Members: </div>
                     <Avatar.Group maxCount={5} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>

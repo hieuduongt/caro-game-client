@@ -21,3 +21,8 @@ export const access = async () : Promise<ResponseData<string>> => {
     const url = `${EnvEnpoint()}/api/Authenticate/access`;
     return get<string>(url);
 }
+
+export const loginAsGuest = async () : Promise<ResponseData<TokenDto>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/login-as-guest`;
+    return get<TokenDto>(url);
+}

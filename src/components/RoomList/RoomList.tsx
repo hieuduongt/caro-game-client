@@ -102,7 +102,7 @@ const RoomList: FC<RoomListProps> = (props) => {
             title: 'Name',
             dataIndex: 'userName',
             key: 'userName',
-            render: (text) => <Tooltip placement="top" title={text}><Button type="link" className="user-name">{text}</Button></Tooltip>,
+            render: (text) => <Tooltip placement="top" title={text}><div className="user-name">{text}</div></Tooltip>,
             sorter: (a, b) => {
                 if (a.userName < b.userName) {
                     return -1;
@@ -123,9 +123,13 @@ const RoomList: FC<RoomListProps> = (props) => {
                     return Roles.find(r => r.value === rs.name);
                 })
                 return (
-                    data.map(d => (
-                        <Tag color={d?.color}>{d?.value.toUpperCase()}</Tag>
-                    ))
+                    <div className="user-roles-td">
+                        {
+                            data.map(d => (
+                                <Tag color={d?.color}>{d?.value.toUpperCase()}</Tag>
+                            ))
+                        }
+                    </div>
                 )
             }
         },
