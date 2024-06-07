@@ -96,6 +96,10 @@ export interface UserDTO {
     numberOfMatchs: number;
     loseMatchs: number;
     winMatchs: number;
+    bannedUserId?: string;
+    banReasons?: string[];
+    banUntil?: string;
+    unBannedUserId?: string;
 }
 
 export interface RoleDTO {
@@ -148,7 +152,7 @@ export interface GameDTO {
 export interface Coordinates {
     id?: string;
     userId: string;
-    player: Player|string;
+    player: Player | string;
     x: number;
     y: number;
     current?: boolean;
@@ -165,7 +169,7 @@ export const Roles = [
         color: "#f50",
         value: "admin"
     },
-     {
+    {
         color: "#87d068",
         value: "manager"
     },

@@ -18,7 +18,7 @@ import { updateConversationNotificationsToSeen } from './services/NotificationSe
 import MessageCard from './components/MessageCard/MessageCard';
 import { access, authenticateUsingRefreshToken, loginAsGuest, logout } from './services/AuthServices';
 
-const App: FC = () => {
+const GameApp: FC = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [isGuest, setIsGuest] = useState<boolean>(false);
   const [api, notiContextHolder] = notification.useNotification();
@@ -65,8 +65,7 @@ const App: FC = () => {
           if (newTokenRes.isSuccess) {
             setAuthToken(newTokenRes.responseData.accessToken);
             setRefreshToken(newTokenRes.responseData.refreshToken);
-            const role = getTokenProperties("role");
-            setIsGuest(role.toLowerCase() === "guest");
+            setIsGuest(checkIsGuest());
             return true;
           } else {
             removeAuthToken();
@@ -76,8 +75,7 @@ const App: FC = () => {
             return false;
           }
         } else {
-          const role = getTokenProperties("role");
-          setIsGuest(role.toLowerCase() === "guest");
+          setIsGuest(checkIsGuest());
           return true;
         }
       } else {
@@ -97,6 +95,17 @@ const App: FC = () => {
       await connectToGameHub();
     }
     setLoading(false);
+  }
+
+  const checkIsGuest = (): boolean => {
+    const currentRoles = getTokenProperties("role");
+    if (Array.isArray(currentRoles)) {
+      return currentRoles.some((cr: string) => cr.toLowerCase() === "guest")
+    }
+    if (currentRoles.toLowerCase() === "guest") {
+      return true;
+    }
+    return false;
   }
 
   const connectToGameHub = async () => {
@@ -127,11 +136,11 @@ const App: FC = () => {
       });
       setConnection(hubConnection);
       setConnected(true);
-      if (getTokenProperties("role").toLowerCase() !== "guest") await getAllConversationsWhenOpen();
+      if (!checkIsGuest()) await getAllConversationsWhenOpen();
     }).catch((error) => {
       messageApi.destroy();
       api.error({
-        message: 'SystemString.CannotConnectToServer',
+        message: SystemString.CannotConnectToServer,
         duration: -1,
         placement: "topRight"
       });
@@ -191,6 +200,7 @@ const App: FC = () => {
     if (res.isSuccess) {
       setUser(undefined);
       removeAuthToken();
+      removeRefreshToken();
       setStep(1);
       connection?.stop();
       setConnected(false);
@@ -668,4 +678,4 @@ const App: FC = () => {
   );
 }
 
-export default App;
+export default GameApp;
