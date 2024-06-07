@@ -16,7 +16,7 @@ import { createConversation, getAllConversations, getConversationToUser } from '
 import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
 import MessageCard from './components/MessageCard/MessageCard';
-import { access, authenticateUsingRefreshToken, loginAsGuest } from './services/AuthServices';
+import { access, authenticateUsingRefreshToken, loginAsGuest, logout } from './services/AuthServices';
 
 const App: FC = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -127,7 +127,7 @@ const App: FC = () => {
       });
       setConnection(hubConnection);
       setConnected(true);
-      if(getTokenProperties("role").toLowerCase() !== "guest") await getAllConversationsWhenOpen();
+      if (getTokenProperties("role").toLowerCase() !== "guest") await getAllConversationsWhenOpen();
     }).catch((error) => {
       messageApi.destroy();
       api.error({
@@ -185,14 +185,21 @@ const App: FC = () => {
     }
   }
 
-  const logOut = (): void => {
-    setUser(undefined);
-    removeAuthToken();
-    setStep(1);
-    connection?.stop();
-    setConnected(false);
-    setConnection(undefined);
-    window.location.reload();
+  const logOut = async (): Promise<void> => {
+    setLoading(true);
+    const res = await logout();
+    if (res.isSuccess) {
+      setUser(undefined);
+      removeAuthToken();
+      setStep(1);
+      connection?.stop();
+      setConnected(false);
+      setConnection(undefined);
+      window.location.reload();
+    } else {
+      addNewNotifications(res.errorMessage, "error");
+    }
+    setLoading(false);
   }
 
   useEffect((): any => {
@@ -443,7 +450,7 @@ const App: FC = () => {
 
   const handlePlayAsGuest = async () => {
     const res = await loginAsGuest();
-    if(res.isSuccess) {
+    if (res.isSuccess) {
       setAuthToken(res.responseData.accessToken);
       setRefreshToken(res.responseData.refreshToken);
       checkIsLoggedIn();

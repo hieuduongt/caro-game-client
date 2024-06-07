@@ -7,6 +7,11 @@ export const login = async (data: LoginDTO) : Promise<ResponseData<TokenDto>> =>
     return post<TokenDto>(url, data);
 }
 
+export const logout = async () : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/logout`;
+    return post<undefined>(url);
+}
+
 export const authenticateUsingRefreshToken = async (data: TokenDto) : Promise<ResponseData<TokenDto>> => {
     const url = `${EnvEnpoint()}/api/Authenticate/token/refresh`;
     return post<TokenDto>(url, data);
