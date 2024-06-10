@@ -1,4 +1,4 @@
-import { Alert, Avatar, Badge, Button, Checkbox, Drawer, Form, Input, Modal, Popover, Space, Spin, notification, Select, Table, Tag } from 'antd';
+import { Alert, Avatar, Badge, Button, Checkbox, Drawer, Form, Input, Modal, Popover, Space, Spin, notification, Select, Table, Tag, InputNumber, Popconfirm, Typography } from 'antd';
 import { FC, useEffect, useState } from 'react';
 import { LoadingOutlined, AlertOutlined } from '@ant-design/icons';
 import { AccountStatus, NotificationDto, Pagination, RoleDTO, Roles, TokenDto, UserDTO } from './models/Models';
@@ -8,42 +8,124 @@ import { v4 as uuidv4 } from 'uuid';
 import { getAllUsers, getUser } from './services/UserServices';
 import { login } from './services/AuthServices';
 import { SystemString } from './common/StringHelper';
-import type { SelectProps } from 'antd';
-const { Column } = Table;
+import type { SelectProps, TableProps } from 'antd';
 
-type TagRender = SelectProps['tagRender'];
+interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
+    editing: boolean;
+    dataIndex: string;
+    title: any;
+    inputType: 'number' | 'text' | "select";
+    record: UserDTO;
+    index: number;
+}
 
-const tagRender: TagRender = (props) => {
-    const { label, value, closable, onClose } = props;
-    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
+const EditableCell: React.FC<React.PropsWithChildren<EditableCellProps>> = ({
+    editing,
+    dataIndex,
+    title,
+    inputType,
+    record,
+    index,
+    children,
+    ...restProps
+}) => {
+    let inputNode;
+    if (inputType === 'number') {
+        inputNode = <InputNumber />
+    }
+    if (inputType === "text") {
+        inputNode = <Input />
+    }
+    if (inputType === "select" && title.toLowerCase() === "status") {
+        inputNode = (
+            <Select placeholder="Fuck you">
+                <Select.Option value={AccountStatus.Active}>Active</Select.Option>
+                <Select.Option value={AccountStatus.Inactive}>InActive</Select.Option>
+                <Select.Option value={AccountStatus.Banned}>Banned</Select.Option>
+            </Select>
+        )
+    }
+
+    type TagRender = SelectProps['tagRender'];
+
+    const tagRender: TagRender = (props) => {
+        const { label, value, closable, onClose } = props;
+        const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+        };
+
+        let color = "";
+        let newLabel = "";
+
+        if (typeof label === "string") {
+            color = label?.split("|")[1];
+            newLabel = label?.split("|")[0];
+        }
+        return (
+            <Tag
+                color={color}
+                onMouseDown={onPreventMouseDown}
+                closable={closable}
+                onClose={onClose}
+                style={{ marginInlineEnd: 4 }}
+            >
+                {newLabel}
+            </Tag>
+        );
     };
 
-    let color = "";
-    let newLabel = "";
-
-    if (typeof label === "string") {
-        color = label?.split("|")[1];
-        newLabel = label?.split("|")[0];
+    if (inputType === "select" && title.toLowerCase() === "roles") {
+        inputNode = (
+            <Select
+                mode="multiple"
+                tagRender={tagRender}
+                style={{ width: "100%", minWidth: 200 }}
+                options={Roles}
+                optionRender={(option) => {
+                    let newLabel = "";
+                    if (typeof option.label === "string") {
+                        newLabel = option.label?.split("|")[0];
+                    }
+                    return <>{newLabel}</>
+                }
+                }
+            />
+        )
     }
+
     return (
-        <Tag
-            color={color}
-            onMouseDown={onPreventMouseDown}
-            closable={closable}
-            onClose={onClose}
-            style={{ marginInlineEnd: 4 }}
-        >
-            {newLabel}
-        </Tag>
+        <td {...restProps}>
+            {editing ? (
+                <Form.Item
+                    name={dataIndex}
+                    style={{ margin: 0 }}
+                    rules={[
+                        {
+                            required: true,
+                            message: `Please Select ${title}!`,
+                        },
+                    ]}
+                >
+                    {inputNode}
+                </Form.Item>
+            ) : (
+                children
+            )}
+        </td>
     );
 };
 
 const AdminPage: FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [user, setUser] = useState<UserDTO>();
-    const [allUsers, setAllUsers] = useState<Pagination<UserDTO>>();
+    const [allUsers, setAllUsers] = useState<Pagination<UserDTO>>({
+        currentPage: 0,
+        pageSize: 20,
+        totalPages: 0,
+        totalRecords: 0,
+        items: []
+    });
     const [allRoles, setAllRoles] = useState<string[]>();
     const [loading, setLoading] = useState<boolean>(false);
     const [loginOpen, setLoginOpen] = useState<boolean>(false);
@@ -53,6 +135,138 @@ const AdminPage: FC = () => {
     const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
+    const [form] = Form.useForm();
+
+    const [editingKey, setEditingKey] = useState<string>('');
+
+    const isEditing = (record: UserDTO) => record.id === editingKey;
+
+    const edit = (record: UserDTO) => {
+        form.setFieldsValue({ name: '', age: '', address: '', ...record });
+        setEditingKey(record.id!);
+    };
+
+    const cancel = () => {
+        setEditingKey('');
+    };
+
+    const save = async (key: React.Key) => {
+        try {
+            const row = (await form.validateFields()) as UserDTO;
+            const newData: Pagination<UserDTO> = {...allUsers};
+            for (let index = 0; index < newData.items!.length; index++) {
+                const element = newData.items![index];
+                if(element.id === key) {
+                    element.status = row.status;
+                    element.role = row.role.map(r => {
+                        return {
+                            name: r.name ? r.name : r.toString(),
+                        }
+                    });
+                    break;
+                }
+            }
+            setAllUsers(newData);
+            setEditingKey('');
+        } catch (errInfo) {
+            console.log('Validate Failed:', errInfo);
+        }
+    };
+
+    const columns = [
+        {
+            title: 'User Name',
+            dataIndex: 'userName',
+            width: '20%',
+            editable: false,
+        },
+        {
+            title: 'Email',
+            dataIndex: 'email',
+            width: '15%',
+            editable: false,
+        },
+        {
+            title: 'Last Active Date',
+            dataIndex: 'lastActiveDate',
+            width: '25%',
+            editable: false,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            width: '15%',
+            editable: true,
+            render: (status: number) => {
+                return (
+                    <>{AccountStatus[status]}</>
+                )
+            }
+        },
+        {
+            title: 'Roles',
+            dataIndex: 'role',
+            width: '25%',
+            editable: true,
+            render: (roles: RoleDTO[]) => {
+                const data = roles.map(rs => {
+                    return Roles.find(r => r.value === rs.name);
+                })
+                return (
+                    <div className="user-roles-td">
+                        {
+                            data.map(d => (
+                                <Tag color={d?.label.split("|")[1]}>{d?.label.split("|")[0]}</Tag>
+                            ))
+                        }
+                    </div>
+                )
+            }
+        },
+        {
+            title: 'Operation',
+            dataIndex: 'operation',
+            render: (_: any, record: UserDTO) => {
+                const editable = isEditing(record);
+                return editable ? (
+                    <span>
+                        <Typography.Link onClick={() => save(record.id!)} style={{ marginRight: 8 }}>
+                            Save
+                        </Typography.Link>
+                        <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
+                            <a>Cancel</a>
+                        </Popconfirm>
+                    </span>
+                ) : (
+                    <Typography.Link disabled={editingKey !== ''} onClick={() => edit(record)}>
+                        Edit
+                    </Typography.Link>
+                );
+            },
+        },
+    ];
+
+    const mergedColumns: TableProps<any>['columns'] = columns.map((col) => {
+        if (!col.editable) {
+            return col;
+        }
+        return {
+            ...col,
+            onCell: (record: UserDTO) => {
+                record.role.forEach(r => {
+                    r.label = Roles.find(rl => rl.value === r.name)?.label!;
+                    r.value = Roles.find(rl => rl.value === r.name)?.value!;
+                });
+                return {
+                    record,
+                    inputType: "select",
+                    dataIndex: col.dataIndex,
+                    title: col.title,
+                    editing: isEditing(record)
+                }
+            },
+        };
+    });
 
     const checkAndGetAccessToken = async (): Promise<boolean> => {
         const accessibleRes = await access();
@@ -189,6 +403,7 @@ const AdminPage: FC = () => {
             addNewNotifications(res.errorMessage, "error");
         }
     }
+
     useEffect(() => {
         if (!user) {
             getUserDetail();
@@ -242,6 +457,11 @@ const AdminPage: FC = () => {
             getAllUsersForManagement("", 1, 20);
         }
     }, [isAdmin, isManager]);
+
+    const handleWhenUserPaginationChange = async (page: number, pageSize: number) => {
+        cancel();
+        return await getAllUsersForManagement("", page, pageSize);
+    }
 
     return (
         <div>
@@ -305,58 +525,20 @@ const AdminPage: FC = () => {
                     isAdmin || isManager ?
                         <div className='admin-page'>
                             <div className='admin-table'>
-                                <div className="title">
-                                    <div className='table-title'>User Name</div>
-                                    <div className='table-title'>Email</div>
-                                    <div className='table-title'>User Name</div>
-                                </div>
-                                <div className="table-body">
-                                    {
-                                        allUsers?.items?.map(item => (
-                                            <div className='table-row'>
-                                                <div>{item.userName}</div>
-                                                <div>{item.email}</div>
-                                                <div>{item.lastActiveDate.toString()}</div>
-                                                <Form
-                                                    layout={"inline"}
-                                                    onFinish={(values) => { console.log(values) }}
-                                                    style={{ width: "100%" }}
-                                                >
-                                                    <Form.Item name={"status"} initialValue={item.status}>
-                                                        <Select onSelect={(value) => { console.log(value) }} placeholder="Fuck you">
-                                                            <Select.Option value={AccountStatus.Active}>Active</Select.Option>
-                                                            <Select.Option value={AccountStatus.Inactive}>InActive</Select.Option>
-                                                            <Select.Option value={AccountStatus.Banned}>Banned</Select.Option>
-                                                        </Select>
-                                                    </Form.Item>
-                                                    {user?.role.some(r => r.name.toLowerCase() === "admin") ?
-                                                        <Form.Item name={"roles"} initialValue={Roles.filter(r => item.role.find(rl => rl.name === r.value)).map(r => r.value)}>
-                                                            <Select
-                                                                mode="multiple"
-                                                                tagRender={tagRender}
-                                                                style={{ width: "100%", minWidth: 200 }}
-                                                                options={Roles}
-                                                                optionRender={(option) => {
-                                                                    let newLabel = "";
-                                                                    if (typeof option.label === "string") {
-                                                                        newLabel = option.label?.split("|")[0];
-                                                                    }
-                                                                    return <>{newLabel}</>
-                                                                }
-                                                                }
-                                                            />
-                                                        </Form.Item> : <></>}
-                                                    <Form.Item>
-                                                        <Space size="middle">
-                                                            <Button type="primary" htmlType='submit'>Save</Button>
-                                                        </Space>
-                                                    </Form.Item>
-                                                </Form>
-                                            </div>
-
-                                        ))
-                                    }
-                                </div>
+                                <Form form={form} component={false}>
+                                    <Table
+                                        components={{
+                                            body: {
+                                                cell: EditableCell,
+                                            },
+                                        }}
+                                        bordered
+                                        dataSource={allUsers?.items}
+                                        columns={mergedColumns}
+                                        rowClassName="editable-row"
+                                        pagination={{ position: ["bottomCenter"], pageSize: allUsers?.pageSize, current: allUsers?.currentPage, total: allUsers?.totalRecords, onChange: handleWhenUserPaginationChange }}
+                                    />
+                                </Form>
 
                             </div>
 

@@ -103,7 +103,9 @@ export interface UserDTO {
 }
 
 export interface RoleDTO {
+    label?: string;
     name: string;
+    value?: string;
 }
 
 export interface ConversationDTO {
