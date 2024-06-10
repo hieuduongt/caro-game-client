@@ -1,18 +1,50 @@
-import { Alert, Avatar, Badge, Button, Checkbox, Drawer, Form, Input, Modal, Popover, Space, Spin, notification } from 'antd';
-import { FC, useEffect, useRef, useState } from 'react';
-import { LoadingOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
-import { NotificationDto, Pagination, TokenDto, UserDTO } from './models/Models';
-import { access, authenticateUsingRefreshToken, logout } from './services/AuthServices';
+import { Alert, Avatar, Badge, Button, Checkbox, Drawer, Form, Input, Modal, Popover, Space, Spin, notification, Select, Table, Tag } from 'antd';
+import { FC, useEffect, useState } from 'react';
+import { LoadingOutlined, AlertOutlined } from '@ant-design/icons';
+import { AccountStatus, NotificationDto, Pagination, RoleDTO, Roles, TokenDto, UserDTO } from './models/Models';
+import { access, authenticateUsingRefreshToken, getRoles, logout } from './services/AuthServices';
 import { generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
 import { v4 as uuidv4 } from 'uuid';
 import { getAllUsers, getUser } from './services/UserServices';
 import { login } from './services/AuthServices';
 import { SystemString } from './common/StringHelper';
+import type { SelectProps } from 'antd';
+const { Column } = Table;
+
+type TagRender = SelectProps['tagRender'];
+
+const tagRender: TagRender = (props) => {
+    const { label, value, closable, onClose } = props;
+    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+    };
+
+    let color = "";
+    let newLabel = "";
+
+    if (typeof label === "string") {
+        color = label?.split("|")[1];
+        newLabel = label?.split("|")[0];
+    }
+    return (
+        <Tag
+            color={color}
+            onMouseDown={onPreventMouseDown}
+            closable={closable}
+            onClose={onClose}
+            style={{ marginInlineEnd: 4 }}
+        >
+            {newLabel}
+        </Tag>
+    );
+};
 
 const AdminPage: FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [user, setUser] = useState<UserDTO>();
     const [allUsers, setAllUsers] = useState<Pagination<UserDTO>>();
+    const [allRoles, setAllRoles] = useState<string[]>();
     const [loading, setLoading] = useState<boolean>(false);
     const [loginOpen, setLoginOpen] = useState<boolean>(false);
     const [loginLoading, setLoginLoading] = useState<boolean>(false);
@@ -149,10 +181,19 @@ const AdminPage: FC = () => {
         setLoading(false);
     }
 
+    const getAllRoles = async (): Promise<void> => {
+        const res = await getRoles();
+        if (res.isSuccess) {
+            setAllRoles(res.responseData);
+        } else {
+            addNewNotifications(res.errorMessage, "error");
+        }
+    }
     useEffect(() => {
         if (!user) {
             getUserDetail();
         }
+        getAllRoles();
     }, []);
 
     const handleLogin = () => {
@@ -189,7 +230,7 @@ const AdminPage: FC = () => {
 
     const getAllUsersForManagement = async (search?: string, page?: number, pageSize?: number): Promise<void> => {
         const res = await getAllUsers(search, page, pageSize);
-        if(res.isSuccess) {
+        if (res.isSuccess) {
             setAllUsers(res.responseData);
         } else {
             addNewNotifications(res.errorMessage, "error");
@@ -197,7 +238,7 @@ const AdminPage: FC = () => {
     }
 
     useEffect(() => {
-        if(isAdmin || isManager) {
+        if (isAdmin || isManager) {
             getAllUsersForManagement("", 1, 20);
         }
     }, [isAdmin, isManager]);
@@ -263,6 +304,63 @@ const AdminPage: FC = () => {
                     :
                     isAdmin || isManager ?
                         <div className='admin-page'>
+                            <div className='admin-table'>
+                                <div className="title">
+                                    <div className='table-title'>User Name</div>
+                                    <div className='table-title'>Email</div>
+                                    <div className='table-title'>User Name</div>
+                                </div>
+                                <div className="table-body">
+                                    {
+                                        allUsers?.items?.map(item => (
+                                            <div className='table-row'>
+                                                <div>{item.userName}</div>
+                                                <div>{item.email}</div>
+                                                <div>{item.lastActiveDate.toString()}</div>
+                                                <Form
+                                                    layout={"inline"}
+                                                    onFinish={(values) => { console.log(values) }}
+                                                    style={{ width: "100%" }}
+                                                >
+                                                    <Form.Item name={"status"} initialValue={item.status}>
+                                                        <Select onSelect={(value) => { console.log(value) }} placeholder="Fuck you">
+                                                            <Select.Option value={AccountStatus.Active}>Active</Select.Option>
+                                                            <Select.Option value={AccountStatus.Inactive}>InActive</Select.Option>
+                                                            <Select.Option value={AccountStatus.Banned}>Banned</Select.Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                    {user?.role.some(r => r.name.toLowerCase() === "admin") ?
+                                                        <Form.Item name={"roles"} initialValue={Roles.filter(r => item.role.find(rl => rl.name === r.value)).map(r => r.value)}>
+                                                            <Select
+                                                                mode="multiple"
+                                                                tagRender={tagRender}
+                                                                style={{ width: "100%", minWidth: 200 }}
+                                                                options={Roles}
+                                                                optionRender={(option) => {
+                                                                    let newLabel = "";
+                                                                    if (typeof option.label === "string") {
+                                                                        newLabel = option.label?.split("|")[0];
+                                                                    }
+                                                                    return <>{newLabel}</>
+                                                                }
+                                                                }
+                                                            />
+                                                        </Form.Item> : <></>}
+                                                    <Form.Item>
+                                                        <Space size="middle">
+                                                            <Button type="primary" htmlType='submit'>Save</Button>
+                                                        </Space>
+                                                    </Form.Item>
+                                                </Form>
+                                            </div>
+
+                                        ))
+                                    }
+                                </div>
+
+                            </div>
+
+
 
                         </div>
                         :

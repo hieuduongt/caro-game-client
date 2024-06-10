@@ -166,20 +166,20 @@ export enum Player {
 
 export const Roles = [
     {
-        color: "#f50",
-        value: "admin"
+        value: "admin",
+        label: "Admin|#f50"
     },
     {
-        color: "#87d068",
-        value: "manager"
+        value: "manager",
+        label: "Manager|#87d068"
     },
     {
-        color: "magenta",
-        value: "user"
+        value: "user",
+        label: "User|magenta"
     },
     {
-        color: "",
-        value: "guest"
+        value: "guest",
+        label: "Guest"
     }
 ]
 

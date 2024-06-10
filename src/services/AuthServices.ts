@@ -31,3 +31,8 @@ export const loginAsGuest = async () : Promise<ResponseData<TokenDto>> => {
     const url = `${EnvEnpoint()}/api/Authenticate/login-as-guest`;
     return get<TokenDto>(url);
 }
+
+export const getRoles = async () : Promise<ResponseData<string[]>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/roles`;
+    return get<string[]>(url);
+}

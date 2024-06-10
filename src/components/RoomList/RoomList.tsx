@@ -126,7 +126,7 @@ const RoomList: FC<RoomListProps> = (props) => {
                     <div className="user-roles-td">
                         {
                             data.map(d => (
-                                <Tag color={d?.color}>{d?.value.toUpperCase()}</Tag>
+                                <Tag color={d?.label.split("|")[1]}>{d?.label.split("|")[0]}</Tag>
                             ))
                         }
                     </div>
