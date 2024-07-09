@@ -386,7 +386,7 @@ const AdminPage: FC = () => {
             let roleChanged = false;
             let statusChanged = false;
 
-            if(user?.role.some(r => r.name === "manager") && currentUser?.role.some(r => r.name === "manager" || r.name === "admin")) {
+            if (user?.role.some(r => r.name === "manager") && currentUser?.role.some(r => r.name === "manager" || r.name === "admin")) {
                 addNewNotifications("You have no permission to ban/inactive this user!", "warning");
                 message.warning({
                     content: "You have no permission to ban/inactive this user!"
