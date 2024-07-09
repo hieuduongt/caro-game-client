@@ -70,4 +70,13 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
+    color: rgb(30, 127, 255);
+    text-align: center;
+}
+
+.user-roles-td {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
 }

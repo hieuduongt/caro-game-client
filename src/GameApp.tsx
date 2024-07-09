@@ -9,17 +9,18 @@ import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
+import { EnvEnpoint, convertDateTimeFromMessage, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto, PaginationObject, NewMessageModel, TokenDto } from './models/Models';
 import { createConversation, getAllConversations, getConversationToUser } from './services/ChatServices';
 import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
 import MessageCard from './components/MessageCard/MessageCard';
-import { access, authenticateUsingRefreshToken } from './services/AuthServices';
+import { access, authenticateUsingRefreshToken, loginAsGuest, logout } from './services/AuthServices';
 
-const App: FC = () => {
+const GameApp: FC = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
+  const [isGuest, setIsGuest] = useState<boolean>(false);
   const [api, notiContextHolder] = notification.useNotification();
   const [loading, setLoading] = useState<boolean>(false);
   const [isConnected, setConnected] = useState<boolean>(false);
@@ -64,6 +65,7 @@ const App: FC = () => {
           if (newTokenRes.isSuccess) {
             setAuthToken(newTokenRes.responseData.accessToken);
             setRefreshToken(newTokenRes.responseData.refreshToken);
+            setIsGuest(checkIsGuest());
             return true;
           } else {
             removeAuthToken();
@@ -73,6 +75,7 @@ const App: FC = () => {
             return false;
           }
         } else {
+          setIsGuest(checkIsGuest());
           return true;
         }
       } else {
@@ -80,7 +83,8 @@ const App: FC = () => {
         return false;
       }
     } else {
-      addNewNotifications("The server is now unavailable, please try again later!", 'warning');
+      console.log(accessibleRes.errorMessage.map(m => convertDateTimeFromMessage(m)));
+      addNewNotifications(accessibleRes.errorMessage.map(m => convertDateTimeFromMessage(m)) || "The server is now unavailable, please try again later!", 'error');
       return false;
     }
   }
@@ -92,6 +96,17 @@ const App: FC = () => {
       await connectToGameHub();
     }
     setLoading(false);
+  }
+
+  const checkIsGuest = (): boolean => {
+    const currentRoles = getTokenProperties("role");
+    if (Array.isArray(currentRoles)) {
+      return currentRoles.some((cr: string) => cr.toLowerCase() === "guest")
+    }
+    if (currentRoles.toLowerCase() === "guest") {
+      return true;
+    }
+    return false;
   }
 
   const connectToGameHub = async () => {
@@ -122,11 +137,11 @@ const App: FC = () => {
       });
       setConnection(hubConnection);
       setConnected(true);
-      await getAllConversationsWhenOpen();
+      if (!checkIsGuest()) await getAllConversationsWhenOpen();
     }).catch((error) => {
       messageApi.destroy();
       api.error({
-        message: 'SystemString.CannotConnectToServer',
+        message: SystemString.CannotConnectToServer,
         duration: -1,
         placement: "topRight"
       });
@@ -180,14 +195,22 @@ const App: FC = () => {
     }
   }
 
-  const logOut = (): void => {
-    setUser(undefined);
-    removeAuthToken();
-    setStep(1);
-    connection?.stop();
-    setConnected(false);
-    setConnection(undefined);
-    window.location.reload();
+  const logOut = async (): Promise<void> => {
+    setLoading(true);
+    const res = await logout();
+    if (res.isSuccess) {
+      setUser(undefined);
+      removeAuthToken();
+      removeRefreshToken();
+      setStep(1);
+      connection?.stop();
+      setConnected(false);
+      setConnection(undefined);
+      window.location.reload();
+    } else {
+      addNewNotifications(res.errorMessage, "error");
+    }
+    setLoading(false);
   }
 
   useEffect((): any => {
@@ -235,7 +258,7 @@ const App: FC = () => {
   }, [connection]);
 
   useEffect(() => {
-    if (reloadAllConversations.id) {
+    if (reloadAllConversations.id && !isGuest) {
       reloadConversations(reloadAllConversations.id, true);
     }
   }, [reloadAllConversations]);
@@ -436,6 +459,17 @@ const App: FC = () => {
     setOpenConversationPanel(false);
   }
 
+  const handlePlayAsGuest = async () => {
+    const res = await loginAsGuest();
+    if (res.isSuccess) {
+      setAuthToken(res.responseData.accessToken);
+      setRefreshToken(res.responseData.refreshToken);
+      checkIsLoggedIn();
+    } else {
+      addNewNotifications(res.errorMessage, "error");
+    }
+  }
+
   return (
     <>
       <div className="header-panel">
@@ -468,7 +502,7 @@ const App: FC = () => {
           <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
             <Button type="default" shape="circle" size='large' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
           </Badge>
-          {user ?
+          {user && !isGuest ?
             <Badge count={allConversations.filter(c => c.unRead).length} size='small' style={{ cursor: "pointer" }} >
               <Popover
                 content={
@@ -534,7 +568,7 @@ const App: FC = () => {
                     <div><b>Matchs:</b> <span style={{ color: "#4096ff", fontWeight: "bold" }}>{user.numberOfMatchs}</span></div>
                     <div><b>Win/Lose:</b> <span style={{ color: "#52c41a", fontWeight: "bold" }}>{user.winMatchs}</span>/<span style={{ color: "#FA541C", fontWeight: "bold" }}>{user.numberOfMatchs - user.winMatchs || 0}</span></div>
                   </div>
-                  <Button type="link">Your profile</Button>
+                  {!isGuest ? <Button type="link">Your profile</Button> : <></>}
                   <Button type="dashed" onClick={logOut}>Log out</Button>
                 </div>
               } trigger="click">
@@ -581,27 +615,31 @@ const App: FC = () => {
               setNewGame,
               watchMode,
               setWatchMode,
-              addNewNotifications
+              addNewNotifications,
+              isGuest
             }}>
-              {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} /> : <></>}
+              {step === 1 ? <Home redirectToLogin={redirectToLogin} connectToGameHub={connectToGameHub} playAsGuest={handlePlayAsGuest} /> : <></>}
               {step === 2 ? <RoomList handleWhenOpeningNewConversation={handleWhenOpeningNewConversation} /> : <></>}
               {step === 3 ? <InGame /> : <></>}
             </AppContext.Provider>
         }
-        <div className="message-bar">
-          {
-            messageCards.map(ms => (
-              !ms.isClosed ? <MessageCard
-                conversationId={ms.conversationId}
-                handleCloseMessageCard={handleCloseMessageCard}
-                connection={connection} user={user!}
-                addNewNotifications={addNewNotifications}
-                hasBeenRead={ms.noti}
-                handleReadConversation={(conversationId) => reloadConversations(conversationId, false)}
-              /> : <></>
-            ))
-          }
-        </div>
+        {!isGuest ?
+          <div className="message-bar">
+            {
+              messageCards.map(ms => (
+                !ms.isClosed ? <MessageCard
+                  conversationId={ms.conversationId}
+                  handleCloseMessageCard={handleCloseMessageCard}
+                  connection={connection} user={user!}
+                  addNewNotifications={addNewNotifications}
+                  hasBeenRead={ms.noti}
+                  handleReadConversation={(conversationId) => reloadConversations(conversationId, false)}
+                />
+                  :
+                  <></>
+              ))
+            }
+          </div> : <></>}
       </div >
       <Drawer
         title="Notifications"
@@ -641,4 +679,4 @@ const App: FC = () => {
   );
 }
 
-export default App;
+export default GameApp;

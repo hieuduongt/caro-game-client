@@ -96,10 +96,16 @@ export interface UserDTO {
     numberOfMatchs: number;
     loseMatchs: number;
     winMatchs: number;
+    bannedUserId?: string;
+    banReasons?: string[];
+    banUntil?: string;
+    unBannedUserId?: string;
 }
 
 export interface RoleDTO {
+    label?: string;
     name: string;
+    value?: string;
 }
 
 export interface ConversationDTO {
@@ -148,7 +154,7 @@ export interface GameDTO {
 export interface Coordinates {
     id?: string;
     userId: string;
-    player: Player|string;
+    player: Player | string;
     x: number;
     y: number;
     current?: boolean;
@@ -160,22 +166,30 @@ export enum Player {
     PlayerO
 }
 
+export enum TimeType {
+    Minute,
+    Hour,
+    Day,
+    Month,
+    Year
+}
+
 export const Roles = [
     {
-        color: "#f50",
-        value: "admin"
-    },
-     {
-        color: "#87d068",
-        value: "manager"
+        value: "admin",
+        label: "Admin|#f50"
     },
     {
-        color: "magenta",
-        value: "user"
+        value: "manager",
+        label: "Manager|#87d068"
     },
     {
-        color: "",
-        value: "guest"
+        value: "user",
+        label: "User|magenta"
+    },
+    {
+        value: "guest",
+        label: "Guest"
     }
 ]
 
@@ -196,4 +210,21 @@ export interface NotificationDto {
     fromUserId?: string;
     conversation?: ConversationDTO;
     type?: "success" | "info" | "warning" | "error";
+}
+
+export interface BanReasonDto {
+    id: string;
+    reason: string;
+}
+
+export interface BanRequestDto {
+    userId: string;
+    banIds: string[];
+    banTime: number,
+    timeType: TimeType
+}
+
+export interface SetRolesRequestDto {
+    userId: string;
+    roles: RoleDTO[];
 }

@@ -1,5 +1,6 @@
 import { jwtDecode } from "jwt-decode";
 import { Coordinates, NotificationDto } from "../models/Models";
+import moment from "moment";
 
 interface ReturnResult {
     winner: string;
@@ -25,7 +26,7 @@ const EnvEnpoint = (): string => {
     }
 }
 
-const formatUTCDateToLocalDate = (date: Date): string => {
+const formatUTCDateToLocalDate = (date: Date|string): string => {
     let localDate;
     if (isIsoDate(date.toString())) {
         localDate = new Date(date.toString() + "Z");
@@ -227,19 +228,46 @@ const isExpired = (): boolean => {
     return false;
 }
 
-export { 
-    setAuthToken, 
-    getAuthToken, 
-    getTokenProperties, 
-    compareRole, 
-    removeAuthToken, 
-    isExpired, 
-    checkWinner, 
-    EnvEnpoint, 
-    generateShortUserName, 
-    formatUTCDateToLocalDate, 
+const compareArray = (a: Array<any>, b: Array<any>): boolean => {
+    if (a.length !== b.length) return false;
+
+    a.sort()
+    b.sort()
+
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+
+    return true;
+}
+
+const convertDateTimeFromMessage = (messsage: string) => {
+    let returnStr = messsage; 
+    const regex = /\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{1,2}:\d{1,2}/gmi;
+    const matches = Array.from(messsage.matchAll(regex));
+    matches.forEach(match => {
+        const currentDate = moment.utc(match[0].replaceAll(/\s+/gmi, " "), "DD/MM/yyyy hh:mm:ss").local();
+        const localDate = formatUTCDateToLocalDate(currentDate.toDate());
+        returnStr = returnStr.replace(match[0], localDate);
+    });
+    return returnStr;
+}
+
+export {
+    setAuthToken,
+    getAuthToken,
+    getTokenProperties,
+    compareRole,
+    removeAuthToken,
+    isExpired,
+    checkWinner,
+    EnvEnpoint,
+    generateShortUserName,
+    formatUTCDateToLocalDate,
     isNotificationDto,
     getRefreshToken,
     setRefreshToken,
-    removeRefreshToken
+    removeRefreshToken,
+    compareArray,
+    convertDateTimeFromMessage
 }
