@@ -1,5 +1,5 @@
 import { EnvEnpoint } from "../helpers/Helper";
-import { LoginDTO, RegisterDTO, ResponseData, TokenDto } from "../models/Models";
+import { BanReasonDto, BanRequestDto, LoginDTO, RegisterDTO, ResponseData, SetRolesRequestDto, TokenDto } from "../models/Models";
 import { post, get } from "./ApiCreator";
 
 export const login = async (data: LoginDTO) : Promise<ResponseData<TokenDto>> => {
@@ -35,4 +35,24 @@ export const loginAsGuest = async () : Promise<ResponseData<TokenDto>> => {
 export const getRoles = async () : Promise<ResponseData<string[]>> => {
     const url = `${EnvEnpoint()}/api/Authenticate/roles`;
     return get<string[]>(url);
+}
+
+export const setRoles = async (data: SetRolesRequestDto) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/set-role`;
+    return post<undefined>(url, data);
+}
+
+export const getBanReasons = async () : Promise<ResponseData<BanReasonDto[]>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/ban-reasons`;
+    return get<BanReasonDto[]>(url);
+}
+
+export const banUser = async (data: BanRequestDto) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/ban`;
+    return post<undefined>(url, data);
+}
+
+export const unBanUser = async (userId: string) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/unban/${userId}`;
+    return post<undefined>(url);
 }

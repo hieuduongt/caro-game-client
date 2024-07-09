@@ -368,19 +368,19 @@ button.scroll-to-bottom::after {
   transform: scale(0.8, 0.65);
 }
 
-.table-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.table-row {
-  display: flex;
-  gap: 10px;
-}
-.title {
-  display: flex;
+.admin-container {
+  /* box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px; */
+  border-radius: 10px;
 }
 
-.title > .table-title {
-  margin-inline-end: 16px;
+.admin-page {
+  margin: auto;
+  max-width: 1920px;
+  min-width: 350px;
+}
+
+@media screen and (max-width: 1920px) {
+  .admin-page {
+      margin: auto 20px;
+  }
 }

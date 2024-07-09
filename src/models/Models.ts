@@ -164,6 +164,14 @@ export enum Player {
     PlayerO
 }
 
+export enum TimeType {
+    Minute,
+    Hour,
+    Day,
+    Month,
+    Year
+}
+
 export const Roles = [
     {
         value: "admin",
@@ -200,4 +208,21 @@ export interface NotificationDto {
     fromUserId?: string;
     conversation?: ConversationDTO;
     type?: "success" | "info" | "warning" | "error";
+}
+
+export interface BanReasonDto {
+    id: string;
+    reason: string;
+}
+
+export interface BanRequestDto {
+    userId: string;
+    banIds: string[];
+    banTime: number,
+    timeType: TimeType
+}
+
+export interface SetRolesRequestDto {
+    userId: string;
+    roles: RoleDTO[];
 }

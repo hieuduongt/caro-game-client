@@ -9,7 +9,7 @@ import InGame from './components/Ingame/Ingame';
 import Home from './components/Home/Home';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import RoomList from './components/RoomList/RoomList';
-import { EnvEnpoint, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
+import { EnvEnpoint, convertDateTimeFromMessage, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
 import { getUser } from './services/UserServices';
 import { Coordinates, MatchDTO, RoomDTO, ConversationDTO, UserDTO, NotificationDto, NotificationTypes, MessageCardDto, MessageDto, PaginationObject, NewMessageModel, TokenDto } from './models/Models';
 import { createConversation, getAllConversations, getConversationToUser } from './services/ChatServices';
@@ -83,7 +83,8 @@ const GameApp: FC = () => {
         return false;
       }
     } else {
-      addNewNotifications("The server is now unavailable, please try again later!", 'warning');
+      console.log(accessibleRes.errorMessage.map(m => convertDateTimeFromMessage(m)));
+      addNewNotifications(accessibleRes.errorMessage.map(m => convertDateTimeFromMessage(m)) || "The server is now unavailable, please try again later!", 'error');
       return false;
     }
   }
