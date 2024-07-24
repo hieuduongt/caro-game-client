@@ -2,7 +2,7 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css';
 import { notification, message, Spin, Popover, Button, Avatar, Alert, Space, Badge, Drawer, List, Skeleton } from 'antd';
-import { LoadingOutlined, AlertOutlined, MessageOutlined } from '@ant-design/icons';
+import { LoadingOutlined, AlertOutlined, MessageOutlined, ControlOutlined } from '@ant-design/icons';
 import * as signalR from "@microsoft/signalr";
 import { AppContext } from './helpers/Context';
 import InGame from './components/Ingame/Ingame';
@@ -17,6 +17,7 @@ import { SystemString } from './common/StringHelper';
 import { updateConversationNotificationsToSeen } from './services/NotificationServices';
 import MessageCard from './components/MessageCard/MessageCard';
 import { access, authenticateUsingRefreshToken, loginAsGuest, logout } from './services/AuthServices';
+import { Link } from 'react-router-dom';
 
 const GameApp: FC = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -499,6 +500,7 @@ const GameApp: FC = () => {
             }
           </div>
 
+          {user?.role.some(r => r.name === 'admin' || r.name === 'manager') ? <Link to={"admin"}><Button type="default" shape="circle" size='large' icon={<ControlOutlined />} title='Go to Admin page'/></Link> : <></>}
           <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
             <Button type="default" shape="circle" size='large' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
           </Badge>

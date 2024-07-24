@@ -1,14 +1,15 @@
 import { Alert, Avatar, Badge, Button, Checkbox, Drawer, Form, Input, Modal, Popover, Space, Spin, notification, Select, Table, Tag, Tooltip, InputNumber, message } from 'antd';
 import { FC, createRef, useEffect, useState } from 'react';
-import { LoadingOutlined, AlertOutlined, UserOutlined } from '@ant-design/icons';
+import { LoadingOutlined, AlertOutlined, UserOutlined, DoubleLeftOutlined, PlusOutlined } from '@ant-design/icons';
 import { AccountStatus, BanReasonDto, BanRequestDto, NotificationDto, Pagination, RoleDTO, Roles, SetRolesRequestDto, TimeType, TokenDto, UserDTO } from './models/Models';
-import { access, authenticateUsingRefreshToken, banUser, getBanReasons, getRoles, logout, setRoles, unBanUser } from './services/AuthServices';
+import { access, addBanReasons, authenticateUsingRefreshToken, banUser, getBanReasons, getRoles, logout, setRoles, unBanUser } from './services/AuthServices';
 import { compareArray, formatUTCDateToLocalDate, generateShortUserName, getAuthToken, getRefreshToken, getTokenProperties, isExpired, removeAuthToken, removeRefreshToken, setAuthToken, setRefreshToken } from './helpers/Helper';
 import { v4 as uuidv4 } from 'uuid';
 import { getAllUsers, getUser } from './services/UserServices';
 import { login } from './services/AuthServices';
 import { SystemString } from './common/StringHelper';
 import type { SelectProps, TableProps } from 'antd';
+import { Link } from 'react-router-dom';
 const { Search } = Input;
 
 type TagRender = SelectProps['tagRender'];
@@ -40,120 +41,6 @@ const tagRender: TagRender = (props) => {
     );
 };
 
-const columns: TableProps<UserDTO>['columns'] = [
-    {
-        title: 'User Name',
-        dataIndex: 'userName',
-        key: 'userName',
-        render: (text) => <a>{text}</a>,
-    },
-    {
-        title: 'Email',
-        dataIndex: 'email',
-        key: 'email',
-    },
-    {
-        title: 'Last Active Date',
-        dataIndex: 'lastActiveDate',
-        key: 'lastActiveDate',
-        render: (value) => (
-            <span>{formatUTCDateToLocalDate(value)}</span>
-        )
-    },
-    {
-        title: 'Account Status',
-        key: 'accountStatus',
-        dataIndex: 'status',
-        sortDirections: ['descend', 'ascend'],
-        render: (status: AccountStatus, user: UserDTO) => {
-            let color = "";
-            if (status == AccountStatus.Active) {
-                color = "green";
-            }
-            if (status == AccountStatus.Banned) {
-                color = "orange";
-            }
-            if (status == AccountStatus.Inactive) {
-                color = "error";
-            }
-            return (
-                <Tooltip title={() => {
-                    if (!user.banReasons || !user.banReasons.length) {
-                        return <>User is activating</>
-                    }
-                    return <>
-                        Reasons: {user.banReasons?.join(", ")}
-                        <br />
-                        Ban Until: {formatUTCDateToLocalDate(user.banUntil || "")}
-                    </>
-                }}>
-                    <Tag color={color} key={"status"} style={{ cursor: "default" }}>
-                        {
-                            AccountStatus[status].toString()
-                        }
-                    </Tag>
-                </Tooltip>
-            );
-        }
-    },
-    {
-        title: 'Online Status',
-        key: 'onlineStatus',
-        dataIndex: '',
-        sortDirections: ['descend', 'ascend'],
-        render: (user: UserDTO) => {
-            let status = "";
-            let color = "";
-
-            if (!user.isOnline) {
-                color = "error";
-                status = "Offline";
-            }
-
-            if (user.isOnline) {
-                status = "Online";
-                color = "green";
-            }
-
-            if (user.roomId) {
-                status = "In Room";
-                color = "orange";
-            }
-
-            if (user.isPlaying) {
-                status = "Playing";
-                color = "gold";
-            }
-            return (
-                <Tag color={color} key={"status"} style={{ cursor: "default" }}>
-                    {
-                        status
-                    }
-                </Tag>
-            );
-        }
-    },
-    {
-        title: 'Role',
-        dataIndex: 'role',
-        key: 'role',
-        render: (roles: RoleDTO[]) => {
-            const data = roles.map(rs => {
-                return Roles.find(r => r.value === rs.name);
-            })
-            return (
-                <div className="user-roles-td">
-                    {
-                        data.map(d => (
-                            <Tag color={d?.label.split("|")[1]} style={{ cursor: "default" }}>{d?.label.split("|")[0]}</Tag>
-                        ))
-                    }
-                </div>
-            )
-        }
-    }
-];
-
 const AdminPage: FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [user, setUser] = useState<UserDTO>();
@@ -163,15 +50,132 @@ const AdminPage: FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [loginOpen, setLoginOpen] = useState<boolean>(false);
     const [loginLoading, setLoginLoading] = useState<boolean>(false);
+    const [addingBanReasons, setAddingBanReasons] = useState<boolean>(false);
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [isManager, setIsManager] = useState<boolean>(false);
     const [isModifying, setIsModifying] = useState<boolean>(false);
     const [savingUserInfo, setSavingUserInfo] = useState<boolean>(false);
     const [openNotificationPanel, setOpenNotificationPanel] = useState<boolean>(false);
     const [fetchingUser, setFetchingUser] = useState<boolean>(false);
+    const [addReasonOpen, setAddReasonOpen] = useState<boolean>(false);
     const [api, contextHolder] = notification.useNotification();
     const [loginForm] = Form.useForm();
     const [editForm] = Form.useForm();
+    const [banReasonForm] = Form.useForm();
+
+    const columns: TableProps<UserDTO>['columns'] = [
+        {
+            title: 'User Name',
+            dataIndex: 'userName',
+            key: 'userName',
+            render: (text: string, user: UserDTO) => <a onClick={() => handleDoubleClick(user)}>{text}</a>,
+        },
+        {
+            title: 'Email',
+            dataIndex: 'email',
+            key: 'email',
+        },
+        {
+            title: 'Last Active Date',
+            dataIndex: 'lastActiveDate',
+            key: 'lastActiveDate',
+            render: (value) => (
+                <span>{formatUTCDateToLocalDate(value)}</span>
+            )
+        },
+        {
+            title: 'Account Status',
+            key: 'accountStatus',
+            dataIndex: 'status',
+            sortDirections: ['descend', 'ascend'],
+            render: (status: AccountStatus, user: UserDTO) => {
+                let color = "";
+                if (status == AccountStatus.Active) {
+                    color = "green";
+                }
+                if (status == AccountStatus.Banned) {
+                    color = "orange";
+                }
+                if (status == AccountStatus.Inactive) {
+                    color = "error";
+                }
+                return (
+                    <Tooltip title={() => {
+                        if (!user.banReasons || !user.banReasons.length) {
+                            return <>User is activating</>
+                        }
+                        return <>
+                            Reasons: {user.banReasons?.join(", ")}
+                            <br />
+                            Ban Until: {formatUTCDateToLocalDate(user.banUntil || "")}
+                        </>
+                    }}>
+                        <Tag color={color} key={"status"} style={{ cursor: "default" }}>
+                            {
+                                AccountStatus[status].toString()
+                            }
+                        </Tag>
+                    </Tooltip>
+                );
+            }
+        },
+        {
+            title: 'Online Status',
+            key: 'onlineStatus',
+            dataIndex: '',
+            sortDirections: ['descend', 'ascend'],
+            render: (user: UserDTO) => {
+                let status = "";
+                let color = "";
+
+                if (!user.isOnline) {
+                    color = "error";
+                    status = "Offline";
+                }
+
+                if (user.isOnline) {
+                    status = "Online";
+                    color = "green";
+                }
+
+                if (user.roomId) {
+                    status = "In Room";
+                    color = "orange";
+                }
+
+                if (user.isPlaying) {
+                    status = "Playing";
+                    color = "gold";
+                }
+                return (
+                    <Tag color={color} key={"status"} style={{ cursor: "default" }}>
+                        {
+                            status
+                        }
+                    </Tag>
+                );
+            }
+        },
+        {
+            title: 'Role',
+            dataIndex: 'role',
+            key: 'role',
+            render: (roles: RoleDTO[]) => {
+                const data = roles.map(rs => {
+                    return Roles.find(r => r.value === rs.name);
+                })
+                return (
+                    <div className="user-roles-td">
+                        {
+                            data.map(d => (
+                                <Tag color={d?.label.split("|")[1]} style={{ cursor: "default" }}>{d?.label.split("|")[0]}</Tag>
+                            ))
+                        }
+                    </div>
+                )
+            }
+        }
+    ];
 
     const checkAndGetAccessToken = async (): Promise<boolean> => {
         const accessibleRes = await access();
@@ -499,6 +503,28 @@ const AdminPage: FC = () => {
         await getAllUsersForManagement("", page, pageSize);
     }
 
+    const handleAddNewBanReason = () => {
+        banReasonForm.validateFields().then(async values => {
+            setAddingBanReasons(true);
+            const listReasons = values.reasons.split("\n").filter((n: string) => n);
+            const res = await addBanReasons(listReasons);
+            if (res.isSuccess) {
+                message.success({
+                    content: "Added the ban ressons",
+                    duration: 3
+                });
+                setAddingBanReasons(false);
+                setAddReasonOpen(false);
+            } else {
+                addNewNotifications(res.errorMessage, "error");
+                setAddingBanReasons(false);
+            }
+        })
+            .catch((err) => {
+                setAddingBanReasons(false);
+            });
+    }
+
     return (
         <div>
             {contextHolder}
@@ -528,7 +554,7 @@ const AdminPage: FC = () => {
                             <></>
                         }
                     </div>
-
+                    {user?.role.some(r => r.name === 'admin' || r.name === 'manager') ? <Link to={"/"}><Button type="default" shape="circle" size='large' icon={<DoubleLeftOutlined />} title='Back to Game page' /></Link> : <></>}
                     <Badge count={notifications.length} size='small' style={{ cursor: "pointer" }} >
                         <Button type="default" shape="circle" size='large' danger={!!notifications.length} icon={<AlertOutlined />} onClick={() => setOpenNotificationPanel(prev => !prev)} />
                     </Badge>
@@ -562,7 +588,13 @@ const AdminPage: FC = () => {
                         <div className='admin-page'>
                             <div className="admin-container">
                                 <Table
-                                    title={() => (<Search className="input-search-user" addonBefore={<UserOutlined size={22} />} placeholder="Type the user's name" allowClear size="large" onSearch={handleWhenSearchUser} />)}
+                                    title={() => (
+                                        <div style={{ display: "flex", gap: "10px" }}>
+                                            <Search className="input-search-user" addonBefore={<UserOutlined size={22} />} placeholder="Type the user's name" allowClear size="large" onSearch={handleWhenSearchUser} />
+                                            {isAdmin ? <Button type="primary" size='large' icon={<PlusOutlined />} onClick={() => setAddReasonOpen(true)} >Add the ban reasons</Button> : <></>}
+                                        </div>
+
+                                    )}
                                     columns={columns}
                                     dataSource={allUsers?.items?.filter(u => u.id !== user?.id)}
                                     bordered
@@ -617,6 +649,32 @@ const AdminPage: FC = () => {
                 </div>
             </Drawer>
             <Modal
+                open={addReasonOpen}
+                title="Add ban Reasons"
+                okText="Add"
+                cancelText="Cancel"
+                onCancel={() => { setAddReasonOpen(false); setAddingBanReasons(false); }}
+                onOk={handleAddNewBanReason}
+                confirmLoading={addingBanReasons}
+                okButtonProps={{ htmlType: "submit" }}
+                width={800}
+            >
+                <Form
+                    form={banReasonForm}
+                    layout="horizontal"
+                    name="add-ban-reasons-form"
+                    size='large'
+                >
+                    <Form.Item
+                        name="reasons"
+                        label="Reasons"
+                        rules={[{ required: true, message: 'Please input your reasons' }]}
+                    >
+                        <Input.TextArea rows={8} placeholder='Input each reason in a single line' />
+                    </Form.Item>
+                </Form>
+            </Modal>
+            <Modal
                 open={loginOpen}
                 title="Login"
                 okText="Login"
@@ -663,7 +721,7 @@ const AdminPage: FC = () => {
             </Modal>
             <Modal
                 open={isModifying}
-                title={`Editing ${currentUser?.userName}`}
+                title={<>Checking <span style={{color: "#1677ff"}}>{currentUser?.userName}</span></>}
                 okText="Save"
                 cancelText="Cancel"
                 onCancel={() => {
