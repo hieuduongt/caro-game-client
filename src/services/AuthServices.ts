@@ -47,6 +47,11 @@ export const getBanReasons = async () : Promise<ResponseData<BanReasonDto[]>> =>
     return get<BanReasonDto[]>(url);
 }
 
+export const addBanReasons = async (data: string[]) : Promise<ResponseData<undefined>> => {
+    const url = `${EnvEnpoint()}/api/Authenticate/add-ban-reasons`;
+    return post<undefined>(url, data);
+}
+
 export const banUser = async (data: BanRequestDto) : Promise<ResponseData<undefined>> => {
     const url = `${EnvEnpoint()}/api/Authenticate/ban`;
     return post<undefined>(url, data);
